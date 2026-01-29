@@ -8,6 +8,8 @@ happened and **what else was occurring at the same time**. GPU driver resets,
 thermal throttling, service restarts, and background process spikes are
 displayed as events aligned on a shared time axis.
 
+---
+
 ## Features
 
 - Journald-backed event collection via a lightweight daemon
@@ -15,6 +17,83 @@ displayed as events aligned on a shared time axis.
 - Visual timeline ("heartbeat") view
 - Event table + JSON details
 - KDE tray icon showing recent system health at a glance
+
+---
+
+## 🔍 How KPulse Compares to Other Journal Viewers
+
+KPulse is **not** intended to be a general replacement for tools like `journalctl` or GUI journal browsers. Instead, it occupies a different layer in the observability stack.
+
+A good point of comparison is [**journal-viewer** by mingue](https://github.com/mingue/journal-viewer).
+
+### Journal Viewer (mingue/journal-viewer)
+
+**Journal Viewer** is a modern, well-designed GUI for browsing the systemd journal.
+
+It excels at:
+- Viewing **raw journal entries** directly
+- Powerful **filtering and searching** by unit, priority, transport, kernel, etc.
+- Showing **log volume graphs** over time
+- Acting as a visual alternative to `journalctl`
+
+Its core philosophy is:
+
+> *“Make the systemd journal easier and more pleasant to browse.”*
+
+This makes it an excellent tool for **log inspection and exploration**.
+
+### KPulse
+
+**KPulse takes a different approach.**
+
+Rather than exposing the journal directly, KPulse:
+- **Ingests** journald events into a daemon
+- **Classifies** them into meaningful categories (GPU, Thermal, Network, Process, System)
+- **Filters noise automatically** (systemd accounting spam, benign info messages, known background chatter)
+- **Persists only relevant events** into a structured SQLite database
+- Presents them as a **semantic timeline of system health**, not a raw log stream
+
+Its core philosophy is:
+
+> *“Surface only the events that matter, when they matter, in a form humans can reason about.”*
+
+### Key Differences at a Glance
+
+| Aspect | Journal Viewer | KPulse |
+|------|---------------|--------|
+| Primary Goal | Browse raw systemd logs | Understand system health events |
+| Data Shown | All journal entries | Curated, classified events |
+| Noise Handling | Manual filtering | Automatic gating & suppression |
+| Timeline | Log volume graph | Semantic event timeline |
+| Persistence | Ephemeral | SQLite-backed event history |
+| Correlation | Manual | Designed for cross-event insight |
+| Live Updates | Refresh-based | Live DBus push |
+| Export | Not primary focus | CSV & clipboard (text/JSON) |
+
+### When to Use Which
+
+Use **Journal Viewer** when you want:
+- Full visibility into the journal
+- Deep inspection of arbitrary services
+- A visual alternative to `journalctl`
+
+Use **KPulse** when you want:
+- A **high-level, readable view of system health**
+- To correlate issues like **micro-stutter, GPU hangs, thermal spikes, or background process spikes**
+- A timeline that highlights *anomalies*, not routine noise
+- Exportable, structured event data for analysis or reporting
+
+### Complementary Tools
+
+These tools are **complementary, not competitors**.
+
+A typical workflow might be:
+1. KPulse highlights *that* something went wrong and *when*
+2. A journal viewer (or `journalctl`) is used to deep-dive into raw logs if needed
+
+KPulse intentionally sits *above* raw logging — closer to a **system health instrument** than a log browser.
+
+---
 
 ## Components
 

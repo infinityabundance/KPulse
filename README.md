@@ -9,6 +9,20 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/infinityabundance/KPulse/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/infinityabundance/KPulse/ci.yml?label=CI&logo=github" alt="CI Status">
+  </a>
+  <a href="https://github.com/infinityabundance/KPulse/releases">
+    <img src="https://img.shields.io/github/v/release/infinityabundance/KPulse?label=release" alt="Latest Release">
+  </a>
+  <a href="https://github.com/infinityabundance/KPulse/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0">
+  </a>
+  <img src="https://img.shields.io/badge/platform-CachyOS%20%2F%20Arch%20Linux-informational" alt="Platform: CachyOS / Arch Linux">
+  <img src="https://img.shields.io/badge/language-C%2B%2B-blue" alt="Language: C++">
+  <img src="https://img.shields.io/badge/build-CMake-success" alt="Build system: CMake">
+</p>
 
 KPulse is a KDE Plasma CachyOS / Archlinux system heartbeat viewer that turns dense system logs
 and background activity into a readable, visual timeline.

@@ -2,7 +2,8 @@
 
 #include <QObject>
 #include <QString>
-
+#include <QStringList>
+#include <QDateTime>
 #include "kpulse/db.hpp"
 #include "kpulse/event.hpp"
 

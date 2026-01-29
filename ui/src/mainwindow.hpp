@@ -4,6 +4,7 @@
 
 #include <QMainWindow>
 #include <QDateTime>
+#include <QToolButton>
 
 class QComboBox;
 class QPushButton;
@@ -39,6 +40,7 @@ private slots:
 private:
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
     void loadEvents();
+    void setupAboutButton();
 
     QString eventToText(const kpulse::Event &ev) const;
     QString eventToJsonString(const kpulse::Event &ev) const;

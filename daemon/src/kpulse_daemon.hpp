@@ -29,6 +29,14 @@ public:
                       qlonglong toMs,
                       const QStringList &categories);
 
+    // DBus-exposed test helper: inject a synthetic event into the store and
+    // broadcast it via EventAdded. Useful for testing the UI without relying
+    // on real journald/metrics sources.
+    void InjectTestEvent(const QString &category,
+                         const QString &severity,
+                         const QString &label,
+                         const QString &detailsJson);
+
 signals:
     // Emitted whenever a new event is stored. The DBus adaptor maps this
     // to the "EventAdded" signal defined in dbus_interface.xml.

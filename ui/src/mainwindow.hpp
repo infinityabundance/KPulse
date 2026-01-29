@@ -1,6 +1,6 @@
 #pragma once
 
-// Main window with context menu, CSV export, and live updates.
+// Main window with context menu, CSV export, live updates, and timeline.
 
 #include <QMainWindow>
 #include <QDateTime>
@@ -11,6 +11,7 @@ class QTableView;
 
 #include "event_model.hpp"
 #include "kpulse/ipc_client.hpp"
+#include "timeline_view.hpp"
 
 class MainWindow : public QMainWindow
 {
@@ -43,6 +44,7 @@ private:
     QPushButton *refreshButton_ = nullptr;
     QPushButton *exportButton_ = nullptr;
     QTableView *tableView_ = nullptr;
+    TimelineView *timelineView_ = nullptr;
 
     EventModel *model_ = nullptr;
     kpulse::IpcClient *ipcClient_ = nullptr;

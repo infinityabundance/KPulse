@@ -7,16 +7,17 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QGuiApplication>
-#include <QHBoxLayout>
 #include <QHeaderView>
-#include <QJsonArray>
+#include <QHBoxLayout>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTableView>
+#include <QTextStream>
 #include <QVBoxLayout>
+#include <QWidget>
 
 #include "kpulse/event.hpp"
 #include "kpulse/ipc_client.hpp"
@@ -78,6 +79,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Initial connect to daemon
     ipcClient_->connectToDaemon();
 
+    // Live updates: when daemon broadcasts EventAdded → append to model
+    connect(ipcClient_, &kpulse::IpcClient::eventReceived,
+            this, &MainWindow::onEventReceived);
+
     // Initial load
     onRefreshClicked();
 }
@@ -130,6 +135,20 @@ void MainWindow::onRefreshClicked()
 void MainWindow::onTimeRangeChanged(int)
 {
     loadEvents();
+}
+
+// ---------- Live updates ----------
+
+void MainWindow::onEventReceived(const kpulse::Event &ev)
+{
+    // Only show events that fall inside the current time range.
+    QDateTime from, to;
+    updateTimeRange(from, to);
+
+    if (ev.timestamp < from || ev.timestamp > to)
+        return;
+
+    model_->appendEvent(ev);
 }
 
 // ---------- Context menu + copy/export ----------

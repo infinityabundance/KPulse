@@ -1,11 +1,9 @@
 #pragma once
 
 #include <QObject>
-#include <QTimer>
+#include <QProcess>
 
 #include "kpulse/event.hpp"
-
-struct sd_journal; // from <systemd/sd-journal.h>
 
 namespace kpulse {
 
@@ -16,8 +14,8 @@ public:
     explicit JournaldReader(QObject *parent = nullptr);
     ~JournaldReader() override;
 
-    // Start tailing the systemd journal from "now".
-    // Returns false if the journal cannot be opened.
+    // Start tailing the systemd journal via `journalctl -f -o json`.
+    // Returns false if the process cannot be started.
     bool start();
 
     // Stop reading and release resources.
@@ -28,11 +26,11 @@ signals:
     void eventDetected(const kpulse::Event &event);
 
 private slots:
-    // Periodic poll driven by a QTimer.
-    void poll();
+    void handleReadyRead();
+    void handleFinished(int exitCode, QProcess::ExitStatus status);
 
 private:
-    bool readNextEvent(Event &outEvent);
+    void processLine(const QByteArray &line);
 
     static Severity severityFromPriority(int prio);
     static bool classifyMessage(const QString &message,
@@ -40,8 +38,8 @@ private:
                                 Severity &outSeverity,
                                 QString &outLabel);
 
-    sd_journal *journal_ = nullptr;
-    QTimer *timer_ = nullptr;
+    QProcess *process_ = nullptr;
+    QByteArray buffer_;
 };
 
 } // namespace kpulse

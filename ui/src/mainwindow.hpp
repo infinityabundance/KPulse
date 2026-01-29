@@ -1,7 +1,5 @@
 #pragma once
 
-// Main window with context menu, CSV export, live updates, and timeline.
-
 #include <QMainWindow>
 #include <QDateTime>
 #include <QToolButton>
@@ -14,6 +12,8 @@ class QTableView;
 #include "kpulse/ipc_client.hpp"
 #include "timeline_view.hpp"
 
+// Main window with timeline, table, context menu, CSV export,
+// live updates, and an "About" button linking to the GitHub repo.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -40,7 +40,6 @@ private slots:
 private:
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
     void loadEvents();
-    void setupAboutButton();
 
     QString eventToText(const kpulse::Event &ev) const;
     QString eventToJsonString(const kpulse::Event &ev) const;
@@ -48,6 +47,7 @@ private:
     QComboBox *rangeCombo_ = nullptr;
     QPushButton *refreshButton_ = nullptr;
     QPushButton *exportButton_ = nullptr;
+    QToolButton *aboutButton_ = nullptr;
     QTableView *tableView_ = nullptr;
     TimelineView *timelineView_ = nullptr;
 

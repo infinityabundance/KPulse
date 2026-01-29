@@ -4,7 +4,7 @@
     <img
       src="assets/kpulse.png"
       alt="KPulse logo"
-      width="800"
+      width="1000"
     />
   </a>
 </p>

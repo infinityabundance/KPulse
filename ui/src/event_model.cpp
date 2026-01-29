@@ -1,11 +1,8 @@
 #include "event_model.hpp"
 
 #include <QDateTime>
-#include <QVariant>
 
 using kpulse::Event;
-using kpulse::Category;
-using kpulse::Severity;
 
 EventModel::EventModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -14,74 +11,74 @@ EventModel::EventModel(QObject *parent)
 
 int EventModel::rowCount(const QModelIndex &parent) const
 {
-    if (parent.isValid()) {
+    if (parent.isValid())
         return 0;
-    }
-    return static_cast<int>(events_.size());
+    return events_.size();
 }
 
 int EventModel::columnCount(const QModelIndex &parent) const
 {
-    if (parent.isValid()) {
+    if (parent.isValid())
         return 0;
-    }
+    // Timestamp, Category, Severity, Label
     return 4;
 }
 
 QVariant EventModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= rowCount()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= events_.size())
         return {};
-    }
-
-    if (role != Qt::DisplayRole) {
-        return {};
-    }
 
     const Event &ev = events_.at(index.row());
 
-    switch (index.column()) {
-    case 0:
-        return ev.timestamp.toString(Qt::ISODate);
-    case 1:
-        return kpulse::categoryToString(ev.category);
-    case 2:
-        return kpulse::severityToString(ev.severity);
-    case 3:
-        return ev.label;
-    default:
-        return {};
+    if (role == Qt::DisplayRole) {
+        switch (index.column()) {
+        case 0:
+            return ev.timestamp.toString(Qt::ISODateWithMs);
+        case 1:
+            return kpulse::categoryToString(ev.category);
+        case 2:
+            return kpulse::severityToString(ev.severity);
+        case 3:
+            return ev.label;
+        default:
+            break;
+        }
     }
+
+    return {};
 }
 
-QVariant EventModel::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant EventModel::headerData(int section, Qt::Orientation orientation,
+                                int role) const
 {
-    if (orientation != Qt::Horizontal || role != Qt::DisplayRole) {
+    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
-    }
 
     switch (section) {
-    case 0:
-        return QStringLiteral("Timestamp");
-    case 1:
-        return QStringLiteral("Category");
-    case 2:
-        return QStringLiteral("Severity");
-    case 3:
-        return QStringLiteral("Label");
-    default:
-        return {};
+    case 0: return QStringLiteral("Timestamp");
+    case 1: return QStringLiteral("Category");
+    case 2: return QStringLiteral("Severity");
+    case 3: return QStringLiteral("Label");
+    default: break;
     }
+    return {};
 }
 
-void EventModel::setEvents(std::vector<Event> events)
+void EventModel::setEvents(const std::vector<Event> &events)
 {
     beginResetModel();
-    events_ = std::move(events);
+    events_.clear();
+    events_.reserve(static_cast<int>(events.size()));
+    for (const auto &ev : events) {
+        events_.push_back(ev);
+    }
     endResetModel();
 }
 
-const Event &EventModel::eventAt(int row) const
+kpulse::Event EventModel::eventAt(int row) const
 {
+    if (row < 0 || row >= events_.size())
+        return kpulse::Event{};
     return events_.at(row);
 }

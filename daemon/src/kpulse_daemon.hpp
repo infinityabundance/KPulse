@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QStringList>
 
 #include "kpulse/db.hpp"
 #include "kpulse/event.hpp"
@@ -20,12 +19,6 @@ public:
     ~KPulseDaemon() override = default;
 
     bool init();
-
-public slots:
-    QString GetEvents(qint64 fromMs, qint64 toMs, const QStringList &categories);
-
-signals:
-    void EventAdded(const QString &eventJson);
 
 private slots:
     void handleEventDetected(const kpulse::Event &event);

@@ -1,5 +1,13 @@
+# KPulse KDE tray app (only built when KF6_FOUND is true)
+
 add_executable(kpulse-tray
     src/main.cpp
+    src/tray_app.cpp
+)
+
+target_include_directories(kpulse-tray
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(kpulse-tray

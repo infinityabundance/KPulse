@@ -1,6 +1,6 @@
 # KPulse
 
-KPulse is a KDE Plasma system heartbeat viewer that turns dense system logs
+KPulse is a KDE Plasma CachyOS / Archlinux system heartbeat viewer that turns dense system logs
 and background activity into a readable, visual timeline.
 
 Instead of digging through `journalctl` output, KPulse shows **when** something
@@ -8,15 +8,43 @@ happened and **what else was occurring at the same time**. GPU driver resets,
 thermal throttling, service restarts, and background process spikes are
 displayed as events aligned on a shared time axis.
 
+KPulse is designed to answer one simple question:
+
+> **What changed, when did it change, and what might have caused it?**
+
+Rather than exposing the system journal directly, KPulse focuses on **signal over noise**, helping you spot meaningful system events at a glance.
+
 ---
 
-## Features
+## 🧠 Key Concepts
 
-- Journald-backed event collection via a lightweight daemon
-- High-level categories (System, GPU, Thermal, Process, Update, Network)
-- Visual timeline ("heartbeat") view
-- Event table + JSON details
-- KDE tray icon showing recent system health at a glance
+- **Semantic Classification**  
+  Events are categorized into GPU, Thermal, Network, Process, and System.
+
+- **Noise Gating**  
+  Routine systemd chatter and benign informational messages are automatically suppressed.
+
+- **Timeline Visualization**  
+  Events are placed on a time axis to make correlations and cause–effect relationships obvious.
+
+- **Structured Storage**  
+  Events are stored in a local SQLite database for fast querying and export.
+
+- **Live UI & Tray Integration**  
+  Events arrive live via DBus, and a tray app provides quick access and status visibility.
+
+---
+
+## 🚀 Features
+
+- 🕒 Live journald ingestion
+- 🔎 Automatic filtering and classification
+- 📊 Timeline view with hover and table highlighting
+- 💾 Persistent SQLite event storage
+- 📋 Copy to clipboard (text / JSON)
+- 📁 CSV export
+- 🐧 DBus IPC for injection and automation
+- 🛠 Tray application (Qt-only fallback; KDE integration optional)
 
 ---
 
@@ -108,20 +136,29 @@ KPulse intentionally sits *above* raw logging — closer to a **system health in
   KDE tray app using `KStatusNotifierItem` to show current health and quickly
   open the main UI.
 
-## Building
+---
 
-KPulse uses CMake, Qt6, KDE Frameworks 6, and libsystemd.
+## 📥 Installation
 
-On Arch / CachyOS, you can install dependencies roughly like:
+### Dependencies
+
+Required:
+- Qt 6 (Widgets, DBus)
+- CMake ≥ 3.20
+- SQLite3
+- systemd (journald access)
+
+Optional:
+- KDE Frameworks 6 (for enhanced tray integration)
 
 ```bash
 sudo pacman -S cmake ninja base-devel \
     qt6-base qt6-tools qt6-declarative \
     kcoreaddons kstatusnotifieritem \
-    systemd-libs
+    systemd-libs sqlite systemd extra-cmake-modules kcoreaddons kio
 ```
 
-Then build:
+### 🛠️Build:
 
 ```bash
 git clone https://github.com/infinityabundance/KPulse.git
@@ -131,96 +168,62 @@ cmake -B build -S .
 cmake --build build
 ```
 
-This will produce:
+### ▶️ Run
 
-- `build/daemon/kpulse-daemon`
-- `build/ui/kpulse-ui`
-- `build/tray/kpulse-tray`
-
-## Running without install
-
-In one terminal, start the daemon:
-
-```bash
+Start the daemon:
+```
 ./build/daemon/kpulse-daemon
 ```
 
-In another terminal, start the UI:
-
-```bash
+Start the UI:
+```
 ./build/ui/kpulse-ui
 ```
 
-Optionally, start the tray app:
-
-```bash
+Start the tray app:
+```
 ./build/tray/kpulse-tray
 ```
 
-You should see KPulse appear with event timeline, table, and a tray icon.
+### 💡 Usage
 
-## Installing locally
+Start `kpulse-daemon`
 
-For a simple local install under `~/.local/bin`:
+Open KPulse via the UI or tray
 
-```bash
-mkdir -p ~/.local/bin
-cp build/daemon/kpulse-daemon ~/.local/bin/
-cp build/ui/kpulse-ui ~/.local/bin/
-cp build/tray/kpulse-tray ~/.local/bin/
+Select a time range
+
+Inspect the timeline and event table
+
+Right-click events to copy text or JSON
+
+Export event ranges to CSV
+
+Inject a test event
+```
+busctl --user call \
+  org.kde.kpulse.Daemon \
+  /org/kde/kpulse/Daemon \
+  org.kde.kpulse.Daemon \
+  InjectTestEvent \
+  ssss \
+  "gpu" \
+  "warning" \
+  "Manual test event" \
+  "{\"source\":\"busctl\",\"value\":1}"
 ```
 
-Make sure `~/.local/bin` is in your `$PATH`.
+---
 
-## Installing via CMake
+## 🧩 Contributing
 
-You can also install KPulse system-wide (or into a prefix) using CMake:
+Issues, feature requests, and pull requests are welcome.
 
-```bash
-cmake -B build -S . -DCMAKE_INSTALL_PREFIX=/usr/local
-cmake --build build
-sudo cmake --install build
+---
+
+## 📜 License
+
+Apache 2.0
 ```
-
-This will install the `kpulse-*` binaries into `/usr/local/bin`.
-
-## systemd user service
-
-KPulse is designed to run `kpulse-daemon` as a user service.
-
-Copy the provided unit file:
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp packaging/kpulse-daemon.user.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now kpulse-daemon.user.service
+::contentReference[oaicite:0]{index=0}
 ```
-
-This will start `kpulse-daemon` as a user service on login.
-
-You can then simply run:
-
-```bash
-kpulse-ui &
-kpulse-tray &
-```
-
-to use the UI and tray app.
-
-## Debugging
-
-Check that the daemon is running:
-
-```bash
-systemctl --user status kpulse-daemon.service
-```
-
-Check that the D-Bus service is registered:
-
-```bash
-qdbus org.kde.kpulse /org/kde/kpulse/Daemon org.kde.kpulse.Daemon.GetEvents 0 999999999999 []
-```
-
-If the UI shows no events, verify that journald has new entries or that the
-metrics collector is generating high-load events.

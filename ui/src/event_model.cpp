@@ -76,6 +76,14 @@ void EventModel::setEvents(const std::vector<Event> &events)
     endResetModel();
 }
 
+void EventModel::appendEvent(const Event &ev)
+{
+    const int row = events_.size();
+    beginInsertRows(QModelIndex(), row, row);
+    events_.push_back(ev);
+    endInsertRows();
+}
+
 kpulse::Event EventModel::eventAt(int row) const
 {
     if (row < 0 || row >= events_.size())

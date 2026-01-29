@@ -1,32 +1,49 @@
 #pragma once
 
-#include <QDateTime>
-#include <QMainWindow>
+// Phase 19.1: Main window with context menu + CSV export.
 
-#include "kpulse/ipc_client.hpp"
+#include <QMainWindow>
+#include <QDateTime>
 
 class QComboBox;
 class QPushButton;
 class QTableView;
-class EventModel;
+
+#include "event_model.hpp"
+#include "kpulse/ipc_client.hpp"
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override = default;
 
 private slots:
-    void refreshEvents();
-    void handleLiveEvent(const kpulse::Event &event);
+    void onRefreshClicked();
+    void onTimeRangeChanged(int index);
+
+    // Context menu + actions
+    void onTableContextMenuRequested(const QPoint &pos);
+    void copyEventText();
+    void copyEventJson();
+    void exportCsv();
 
 private:
-    void setupUi();
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
+    void loadEvents();
 
-    kpulse::IpcClient ipc_;
-    EventModel *model_ = nullptr;
-    QTableView *tableView_ = nullptr;
+    QString eventToText(const kpulse::Event &ev) const;
+    QString eventToJsonString(const kpulse::Event &ev) const;
+
     QComboBox *rangeCombo_ = nullptr;
     QPushButton *refreshButton_ = nullptr;
+    QPushButton *exportButton_ = nullptr;
+    QTableView *tableView_ = nullptr;
+
+    EventModel *model_ = nullptr;
+    kpulse::IpcClient *ipcClient_ = nullptr;
+
+    // Last known selection row for context menu actions
+    int contextRow_ = -1;
 };

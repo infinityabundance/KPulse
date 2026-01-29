@@ -1,13 +1,7 @@
 #include "kpulse_daemon.hpp"
 
 #include "kpulse/common.hpp"
-#include "kpulse/db.hpp"
-#include "kpulse/event.hpp"
 
-#include <QDateTime>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QtGlobal>
 
 namespace kpulse {
@@ -26,16 +20,18 @@ KPulseDaemon::KPulseDaemon(const QString &dbPath, QObject *parent)
 bool KPulseDaemon::init()
 {
     if (!store_.open()) {
-        qCritical() << "KPulseDaemon: failed to open DB at" << dbPath_;
+        qWarning() << "Failed to open KPulse database";
         return false;
     }
+
     if (!store_.initSchema()) {
-        qCritical() << "KPulseDaemon: failed to init DB schema";
+        qWarning() << "Failed to initialize KPulse database schema";
         return false;
     }
 
     if (!journald_.init()) {
-        qWarning() << "KPulseDaemon: failed to init JournaldReader";
+        qWarning() << "Failed to initialize journald reader";
+        return false;
     }
 
     journald_.start();
@@ -44,47 +40,18 @@ bool KPulseDaemon::init()
     return true;
 }
 
-QString KPulseDaemon::GetEvents(qint64 fromMs, qint64 toMs, const QStringList &categories)
-{
-    const QDateTime from = QDateTime::fromMSecsSinceEpoch(fromMs, Qt::UTC);
-    const QDateTime to = QDateTime::fromMSecsSinceEpoch(toMs, Qt::UTC);
-
-    std::vector<Category> catEnums;
-    catEnums.reserve(categories.size());
-    for (const QString &s : categories) {
-        catEnums.push_back(categoryFromString(s));
-    }
-
-    const auto events = store_.queryEvents(from, to, catEnums);
-
-    QJsonArray arr;
-    for (const auto &ev : events) {
-        arr.append(eventToJson(ev));
-    }
-
-    QJsonDocument doc(arr);
-    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
-}
-
 void KPulseDaemon::handleEventDetected(const kpulse::Event &event)
 {
-    Event ev = event;
-    if (!ev.timestamp.isValid()) {
-        ev.timestamp = nowUtc();
+    Event eventCopy = event;
+    if (!eventCopy.timestamp.isValid()) {
+        eventCopy.timestamp = nowUtc();
     }
-
-    baseline_.observe(ev);
-    ev.anomalyScore = baseline_.score(ev);
-    ev.isAnomalous = (ev.anomalyScore >= 5.0);
 
     qint64 id = 0;
-    if (!store_.insertEvent(ev, &id)) {
-        qWarning() << "KPulseDaemon: failed to store event";
+    if (!store_.insertEvent(eventCopy, &id)) {
+        qWarning() << "Failed to store KPulse event";
         return;
     }
-
-    const QString json = eventToJsonString(ev);
-    emit EventAdded(json);
 }
 
 } // namespace kpulse

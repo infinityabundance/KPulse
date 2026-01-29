@@ -8,9 +8,7 @@
 class QComboBox;
 class QPushButton;
 class QTableView;
-class QTextEdit;
 class EventModel;
-class TimelineView;
 
 class MainWindow : public QMainWindow
 {
@@ -21,19 +19,14 @@ public:
 private slots:
     void refreshEvents();
     void handleLiveEvent(const kpulse::Event &event);
-    void handleTableSelectionChanged();
-    void handleTimelineClicked(const kpulse::Event &event);
 
 private:
     void setupUi();
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
-    void showEventDetails(const kpulse::Event &event);
 
     kpulse::IpcClient ipc_;
     EventModel *model_ = nullptr;
-    TimelineView *timelineView_ = nullptr;
     QTableView *tableView_ = nullptr;
     QComboBox *rangeCombo_ = nullptr;
     QPushButton *refreshButton_ = nullptr;
-    QTextEdit *detailsEdit_ = nullptr;
 };

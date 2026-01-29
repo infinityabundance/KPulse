@@ -1,0 +1,10 @@
+[Unit]
+Description=KPulse system heartbeat daemon
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/kpulse-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

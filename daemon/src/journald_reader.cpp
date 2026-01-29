@@ -37,39 +37,6 @@ Severity priorityToSeverity(int priority)
     }
     return Severity::Info;
 }
-
-Category classifyEvent(const QString &unit, const QString &message)
-{
-    const QString u = unit.toLower();
-    const QString m = message.toLower();
-
-    if (u.contains(QStringLiteral("gpu")) || u.contains(QStringLiteral("nvidia")) ||
-        u.contains(QStringLiteral("amdgpu")) || m.contains(QStringLiteral("gpu")) ||
-        m.contains(QStringLiteral("nvidia")) || m.contains(QStringLiteral("amdgpu"))) {
-        return Category::GPU;
-    }
-
-    if (u.contains(QStringLiteral("thermal")) || m.contains(QStringLiteral("throttl")) ||
-        m.contains(QStringLiteral("overheat")) || m.contains(QStringLiteral("temperature"))) {
-        return Category::Thermal;
-    }
-
-    if (m.contains(QStringLiteral("pacman")) || m.contains(QStringLiteral("package")) ||
-        m.contains(QStringLiteral("update")) || m.contains(QStringLiteral("upgraded")) ||
-        (m.contains(QStringLiteral("kernel")) &&
-         (m.contains(QStringLiteral("installed")) || m.contains(QStringLiteral("upgraded"))))) {
-        return Category::Update;
-    }
-
-    if (u.contains(QStringLiteral("network")) ||
-        u.contains(QStringLiteral("networkmanager")) || u.contains(QStringLiteral("netctl")) ||
-        m.contains(QStringLiteral("network")) || m.contains(QStringLiteral("link is down")) ||
-        m.contains(QStringLiteral("link is up"))) {
-        return Category::Network;
-    }
-
-    return Category::System;
-}
 }
 
 JournaldReader::JournaldReader(QObject *parent)
@@ -156,7 +123,7 @@ bool JournaldReader::readNextEvent(Event &outEvent)
 
     const qint64 msec = static_cast<qint64>(usec / 1000);
     outEvent.timestamp = QDateTime::fromMSecsSinceEpoch(msec, Qt::UTC);
-    outEvent.category = classifyEvent(unit, message);
+    outEvent.category = Category::System;
     outEvent.severity = priorityToSeverity(ok ? priority : 5);
     outEvent.label = label;
 

@@ -145,36 +145,3 @@ qdbus org.kde.kpulse /org/kde/kpulse/Daemon org.kde.kpulse.Daemon.GetEvents 0 99
 
 If the UI shows no events, verify that journald has new entries or that the
 metrics collector is generating high-load events.
-
-## Build Troubleshooting
-
-### CMake cannot find Qt6
-
-If you see an error like:
-
-> Could not find Qt6Config.cmake
-
-Make sure Qt6 development packages are installed.
-
-On Arch / CachyOS:
-
-```bash
-sudo pacman -S qt6-base qt6-tools qt6-declarative
-```
-
-Qt6 CMake files are typically located at:
-
-```
-/usr/lib/cmake/Qt6
-```
-
-You can point CMake to them explicitly:
-
-```bash
-cmake -B build -S . -DQt6_DIR=/usr/lib/cmake/Qt6
-```
-
-### Building without KDE Frameworks
-
-The tray app (`kpulse-tray`) requires KDE Frameworks 6.
-If KF6 is not available, it will be skipped automatically.

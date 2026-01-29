@@ -224,6 +224,3 @@ Issues, feature requests, and pull requests are welcome.
 ## 📜 License
 
 Apache 2.0
-```
-::contentReference[oaicite:0]{index=0}
-```

@@ -1,96 +1,237 @@
 #include "mainwindow.hpp"
 
-#include "event_model.hpp"
-
-#include <QAbstractItemView>
+#include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
-#include <QDate>
 #include <QDateTime>
-#include <QDebug>
+#include <QFile>
+#include <QFileDialog>
+#include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QHeaderView>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMenu>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTableView>
 #include <QVBoxLayout>
-#include <QWidget>
+
+#include "kpulse/event.hpp"
+#include "kpulse/ipc_client.hpp"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
+    , model_(new EventModel(this))
+    , ipcClient_(new kpulse::IpcClient(this))
 {
-    setupUi();
+    auto *central = new QWidget(this);
+    auto *vbox = new QVBoxLayout(central);
+    vbox->setContentsMargins(4, 4, 4, 4);
+    vbox->setSpacing(4);
 
-    connect(&ipc_, &kpulse::IpcClient::eventReceived, this, &MainWindow::handleLiveEvent);
+    // Top bar: time range + Refresh + Export CSV
+    auto *hbox = new QHBoxLayout();
+    hbox->setSpacing(4);
 
-    refreshEvents();
-}
-
-void MainWindow::setupUi()
-{
-    setWindowTitle(QStringLiteral("KPulse"));
-    resize(1000, 700);
-
-    QWidget *central = new QWidget(this);
-    QVBoxLayout *vbox = new QVBoxLayout(central);
-    vbox->setContentsMargins(0, 0, 0, 0);
-
-    QHBoxLayout *controls = new QHBoxLayout();
     rangeCombo_ = new QComboBox(central);
     rangeCombo_->addItem(QStringLiteral("Last 10 minutes"));
     rangeCombo_->addItem(QStringLiteral("Last hour"));
+    rangeCombo_->addItem(QStringLiteral("Last 24 hours"));
     rangeCombo_->addItem(QStringLiteral("Today"));
+    hbox->addWidget(rangeCombo_);
 
     refreshButton_ = new QPushButton(QStringLiteral("Refresh"), central);
-    controls->addWidget(rangeCombo_);
-    controls->addWidget(refreshButton_);
-    controls->addStretch(1);
+    hbox->addWidget(refreshButton_);
 
-    vbox->addLayout(controls);
+    exportButton_ = new QPushButton(QStringLiteral("Export CSV…"), central);
+    hbox->addWidget(exportButton_);
 
-    model_ = new EventModel(this);
+    hbox->addStretch(1);
+    vbox->addLayout(hbox);
+
+    // Table view
     tableView_ = new QTableView(central);
     tableView_->setModel(model_);
+    tableView_->horizontalHeader()->setStretchLastSection(true);
     tableView_->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView_->setSelectionMode(QAbstractItemView::SingleSelection);
-    tableView_->setAlternatingRowColors(true);
-    tableView_->setSortingEnabled(true);
-
+    tableView_->setContextMenuPolicy(Qt::CustomContextMenu);
     vbox->addWidget(tableView_);
 
     setCentralWidget(central);
+    setWindowTitle(QStringLiteral("KPulse"));
 
-    connect(refreshButton_, &QPushButton::clicked, this, &MainWindow::refreshEvents);
+    // Signals/slots
+    connect(refreshButton_, &QPushButton::clicked,
+            this, &MainWindow::onRefreshClicked);
+    connect(rangeCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onTimeRangeChanged);
+
+    connect(tableView_, &QTableView::customContextMenuRequested,
+            this, &MainWindow::onTableContextMenuRequested);
+
+    connect(exportButton_, &QPushButton::clicked,
+            this, &MainWindow::exportCsv);
+
+    // Initial connect to daemon
+    ipcClient_->connectToDaemon();
+
+    // Initial load
+    onRefreshClicked();
 }
 
 void MainWindow::updateTimeRange(QDateTime &from, QDateTime &to) const
 {
-    to = QDateTime::currentDateTimeUtc();
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    to = now;
 
-    const QString sel = rangeCombo_->currentText();
-    if (sel == QStringLiteral("Last 10 minutes")) {
-        from = to.addSecs(-10 * 60);
-    } else if (sel == QStringLiteral("Last hour")) {
-        from = to.addSecs(-60 * 60);
-    } else if (sel == QStringLiteral("Today")) {
-        const QDate date = to.date();
-        from = QDateTime(QDate(date.year(), date.month(), date.day()), QTime(0, 0, 0), Qt::UTC);
-    } else {
-        from = to.addSecs(-60 * 60);
+    switch (rangeCombo_->currentIndex()) {
+    case 0: // Last 10 minutes
+        from = now.addSecs(-10 * 60);
+        break;
+    case 1: // Last hour
+        from = now.addSecs(-60 * 60);
+        break;
+    case 2: // Last 24 hours
+        from = now.addSecs(-24 * 60 * 60);
+        break;
+    case 3: // Today (UTC)
+    default: {
+        QDate d = now.date();
+        from = QDateTime(QDate(d.year(), d.month(), d.day()),
+                         QTime(0, 0, 0),
+                         Qt::UTC);
+        break;
+    }
     }
 }
 
-void MainWindow::refreshEvents()
+void MainWindow::loadEvents()
 {
-    QDateTime fromUtc;
-    QDateTime toUtc;
-    updateTimeRange(fromUtc, toUtc);
+    if (!ipcClient_->isConnected()) {
+        ipcClient_->connectToDaemon();
+    }
 
-    std::vector<kpulse::Category> categories;
+    QDateTime from, to;
+    updateTimeRange(from, to);
 
-    auto events = ipc_.getEvents(fromUtc, toUtc, categories);
-    model_->setEvents(std::move(events));
+    std::vector<kpulse::Category> cats; // empty = all categories
+    const auto events = ipcClient_->getEvents(from, to, cats);
+    model_->setEvents(events);
 }
 
-void MainWindow::handleLiveEvent(const kpulse::Event &event)
+void MainWindow::onRefreshClicked()
 {
-    Q_UNUSED(event);
-    refreshEvents();
+    loadEvents();
+}
+
+void MainWindow::onTimeRangeChanged(int)
+{
+    loadEvents();
+}
+
+// ---------- Context menu + copy/export ----------
+
+void MainWindow::onTableContextMenuRequested(const QPoint &pos)
+{
+    QModelIndex index = tableView_->indexAt(pos);
+    if (!index.isValid()) {
+        return;
+    }
+
+    contextRow_ = index.row();
+
+    QMenu menu(this);
+    QAction *copyTextAct = menu.addAction(QStringLiteral("Copy event (text)"));
+    QAction *copyJsonAct = menu.addAction(QStringLiteral("Copy event (JSON)"));
+
+    QAction *chosen = menu.exec(tableView_->viewport()->mapToGlobal(pos));
+    if (!chosen)
+        return;
+
+    if (chosen == copyTextAct) {
+        copyEventText();
+    } else if (chosen == copyJsonAct) {
+        copyEventJson();
+    }
+}
+
+QString MainWindow::eventToText(const kpulse::Event &ev) const
+{
+    QString line;
+    line += ev.timestamp.toString(Qt::ISODateWithMs);
+    line += QStringLiteral(" | ");
+    line += kpulse::categoryToString(ev.category);
+    line += QStringLiteral(" | ");
+    line += kpulse::severityToString(ev.severity);
+    line += QStringLiteral(" | ");
+    line += ev.label;
+    return line;
+}
+
+QString MainWindow::eventToJsonString(const kpulse::Event &ev) const
+{
+    return kpulse::eventToJsonString(ev);
+}
+
+void MainWindow::copyEventText()
+{
+    if (contextRow_ < 0)
+        return;
+    const kpulse::Event ev = model_->eventAt(contextRow_);
+    const QString text = eventToText(ev);
+    QClipboard *cb = QGuiApplication::clipboard();
+    cb->setText(text, QClipboard::Clipboard);
+}
+
+void MainWindow::copyEventJson()
+{
+    if (contextRow_ < 0)
+        return;
+    const kpulse::Event ev = model_->eventAt(contextRow_);
+    const QString text = eventToJsonString(ev);
+    QClipboard *cb = QGuiApplication::clipboard();
+    cb->setText(text, QClipboard::Clipboard);
+}
+
+void MainWindow::exportCsv()
+{
+    const QString fileName = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("Export events to CSV"),
+        QStringLiteral("kpulse_events.csv"),
+        QStringLiteral("CSV files (*.csv);;All files (*)")
+    );
+    if (fileName.isEmpty())
+        return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::warning(this,
+                             QStringLiteral("Export failed"),
+                             QStringLiteral("Could not open file for writing."));
+        return;
+    }
+
+    QTextStream out(&file);
+    out << "timestamp,category,severity,label\n";
+
+    const auto &events = model_->events();
+    for (const kpulse::Event &ev : events) {
+        const QString ts = ev.timestamp.toString(Qt::ISODateWithMs);
+        const QString cat = kpulse::categoryToString(ev.category);
+        const QString sev = kpulse::severityToString(ev.severity);
+        QString label = ev.label;
+        QString safeLabel = label;
+        safeLabel.replace('\"', "\"\"");
+        // Very simple CSV escaping: wrap all fields in quotes
+        out << "\"" << ts << "\","
+            << "\"" << cat << "\","
+            << "\"" << sev << "\","
+            << "\"" << safeLabel << "\"\n";
+    }
+
+    file.close();
 }

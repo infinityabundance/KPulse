@@ -1,0 +1,15 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kpulse.Daemon">
+    <method name="GetEvents">
+      <arg name="fromMs" direction="in" type="x"/>
+      <arg name="toMs" direction="in" type="x"/>
+      <arg name="categories" direction="in" type="as"/>
+      <arg name="eventsJson" direction="out" type="s"/>
+    </method>
+    <signal name="EventAdded">
+      <arg name="eventJson" type="s"/>
+    </signal>
+  </interface>
+</node>

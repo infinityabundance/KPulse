@@ -12,7 +12,6 @@ public:
     explicit TimelineView(QWidget *parent = nullptr);
 
     void setEvents(const std::vector<kpulse::Event> &events);
-    void appendEvent(const kpulse::Event &event);
 
 signals:
     void eventClicked(const kpulse::Event &event);

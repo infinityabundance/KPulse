@@ -1,6 +1,5 @@
 #include "event_model.hpp"
 
-#include <QColor>
 #include <QDateTime>
 #include <QVariant>
 
@@ -35,37 +34,24 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         return {};
     }
 
+    if (role != Qt::DisplayRole) {
+        return {};
+    }
+
     const Event &ev = events_.at(index.row());
 
-    if (role == Qt::DisplayRole) {
-        switch (index.column()) {
-        case 0:
-            return ev.timestamp.toString(Qt::ISODate);
-        case 1:
-            return kpulse::categoryToString(ev.category);
-        case 2:
-            return kpulse::severityToString(ev.severity);
-        case 3:
-            return ev.label;
-        default:
-            return {};
-        }
+    switch (index.column()) {
+    case 0:
+        return ev.timestamp.toString(Qt::ISODate);
+    case 1:
+        return kpulse::categoryToString(ev.category);
+    case 2:
+        return kpulse::severityToString(ev.severity);
+    case 3:
+        return ev.label;
+    default:
+        return {};
     }
-
-    if (role == Qt::BackgroundRole) {
-        switch (ev.severity) {
-        case Severity::Info:
-            return QVariant();
-        case Severity::Warning:
-            return QColor(255, 245, 200);
-        case Severity::Error:
-            return QColor(255, 220, 220);
-        case Severity::Critical:
-            return QColor(255, 200, 200);
-        }
-    }
-
-    return {};
 }
 
 QVariant EventModel::headerData(int section, Qt::Orientation orientation, int role) const

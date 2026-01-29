@@ -1,23 +1,15 @@
 #include "mainwindow.hpp"
 
 #include "event_model.hpp"
-#include "timeline_view.hpp"
 
 #include <QAbstractItemView>
-#include <QCheckBox>
 #include <QComboBox>
 #include <QDate>
 #include <QDateTime>
-#include <QHeaderView>
+#include <QDebug>
 #include <QHBoxLayout>
-#include <QItemSelectionModel>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QLineEdit>
 #include <QPushButton>
-#include <QSplitter>
 #include <QTableView>
-#include <QTextEdit>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -34,103 +26,38 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::setupUi()
 {
     setWindowTitle(QStringLiteral("KPulse"));
-    resize(1200, 800);
+    resize(1000, 700);
 
     QWidget *central = new QWidget(this);
-    QHBoxLayout *hbox = new QHBoxLayout(central);
-    hbox->setContentsMargins(0, 0, 0, 0);
-
-    QSplitter *leftSplitter = new QSplitter(Qt::Vertical, central);
-
-    QWidget *topControlsAndTimeline = new QWidget(leftSplitter);
-    QVBoxLayout *topLayout = new QVBoxLayout(topControlsAndTimeline);
-    topLayout->setContentsMargins(4, 4, 4, 4);
+    QVBoxLayout *vbox = new QVBoxLayout(central);
+    vbox->setContentsMargins(0, 0, 0, 0);
 
     QHBoxLayout *controls = new QHBoxLayout();
-    rangeCombo_ = new QComboBox(topControlsAndTimeline);
+    rangeCombo_ = new QComboBox(central);
     rangeCombo_->addItem(QStringLiteral("Last 10 minutes"));
     rangeCombo_->addItem(QStringLiteral("Last hour"));
     rangeCombo_->addItem(QStringLiteral("Today"));
 
-    refreshButton_ = new QPushButton(QStringLiteral("Refresh"), topControlsAndTimeline);
-    searchEdit_ = new QLineEdit(topControlsAndTimeline);
-    searchEdit_->setPlaceholderText(QStringLiteral("Filter by text (label/message)..."));
+    refreshButton_ = new QPushButton(QStringLiteral("Refresh"), central);
     controls->addWidget(rangeCombo_);
     controls->addWidget(refreshButton_);
-    controls->addWidget(searchEdit_);
     controls->addStretch(1);
 
-    topLayout->addLayout(controls);
-
-    QHBoxLayout *filters = new QHBoxLayout();
-    checkboxSystem_ = new QCheckBox(QStringLiteral("System"), topControlsAndTimeline);
-    checkboxGPU_ = new QCheckBox(QStringLiteral("GPU"), topControlsAndTimeline);
-    checkboxThermal_ = new QCheckBox(QStringLiteral("Thermal"), topControlsAndTimeline);
-    checkboxProcess_ = new QCheckBox(QStringLiteral("Process"), topControlsAndTimeline);
-    checkboxUpdate_ = new QCheckBox(QStringLiteral("Update"), topControlsAndTimeline);
-    checkboxNetwork_ = new QCheckBox(QStringLiteral("Network"), topControlsAndTimeline);
-
-    checkboxSystem_->setChecked(true);
-    checkboxGPU_->setChecked(true);
-    checkboxThermal_->setChecked(true);
-    checkboxProcess_->setChecked(true);
-    checkboxUpdate_->setChecked(true);
-    checkboxNetwork_->setChecked(true);
-
-    filters->addWidget(checkboxSystem_);
-    filters->addWidget(checkboxGPU_);
-    filters->addWidget(checkboxThermal_);
-    filters->addWidget(checkboxProcess_);
-    filters->addWidget(checkboxUpdate_);
-    filters->addWidget(checkboxNetwork_);
-    filters->addStretch(1);
-
-    topLayout->addLayout(filters);
-
-    timelineView_ = new TimelineView(topControlsAndTimeline);
-    topLayout->addWidget(timelineView_);
-
-    leftSplitter->addWidget(topControlsAndTimeline);
+    vbox->addLayout(controls);
 
     model_ = new EventModel(this);
-    tableView_ = new QTableView(leftSplitter);
+    tableView_ = new QTableView(central);
     tableView_->setModel(model_);
     tableView_->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView_->setSelectionMode(QAbstractItemView::SingleSelection);
     tableView_->setAlternatingRowColors(true);
-    tableView_->horizontalHeader()->setStretchLastSection(true);
     tableView_->setSortingEnabled(true);
 
-    leftSplitter->addWidget(tableView_);
-    leftSplitter->setStretchFactor(0, 1);
-    leftSplitter->setStretchFactor(1, 2);
+    vbox->addWidget(tableView_);
 
-    detailsEdit_ = new QTextEdit(central);
-    detailsEdit_->setReadOnly(true);
-
-    QSplitter *mainSplitter = new QSplitter(Qt::Horizontal, central);
-    mainSplitter->addWidget(leftSplitter);
-    mainSplitter->addWidget(detailsEdit_);
-    mainSplitter->setStretchFactor(0, 3);
-    mainSplitter->setStretchFactor(1, 2);
-
-    hbox->addWidget(mainSplitter);
     setCentralWidget(central);
 
     connect(refreshButton_, &QPushButton::clicked, this, &MainWindow::refreshEvents);
-
-    connect(searchEdit_, &QLineEdit::textChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxSystem_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxGPU_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxThermal_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxProcess_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxUpdate_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-    connect(checkboxNetwork_, &QCheckBox::stateChanged, this, &MainWindow::handleFilterChanged);
-
-    QItemSelectionModel *selModel = tableView_->selectionModel();
-    connect(selModel, &QItemSelectionModel::selectionChanged, this, &MainWindow::handleTableSelectionChanged);
-
-    connect(timelineView_, &TimelineView::eventClicked, this, &MainWindow::handleTimelineClicked);
 }
 
 void MainWindow::updateTimeRange(QDateTime &from, QDateTime &to) const
@@ -157,113 +84,13 @@ void MainWindow::refreshEvents()
     updateTimeRange(fromUtc, toUtc);
 
     std::vector<kpulse::Category> categories;
-    if (checkboxSystem_ && checkboxSystem_->isChecked()) {
-        categories.push_back(kpulse::Category::System);
-    }
-    if (checkboxGPU_ && checkboxGPU_->isChecked()) {
-        categories.push_back(kpulse::Category::GPU);
-    }
-    if (checkboxThermal_ && checkboxThermal_->isChecked()) {
-        categories.push_back(kpulse::Category::Thermal);
-    }
-    if (checkboxProcess_ && checkboxProcess_->isChecked()) {
-        categories.push_back(kpulse::Category::Process);
-    }
-    if (checkboxUpdate_ && checkboxUpdate_->isChecked()) {
-        categories.push_back(kpulse::Category::Update);
-    }
-    if (checkboxNetwork_ && checkboxNetwork_->isChecked()) {
-        categories.push_back(kpulse::Category::Network);
-    }
-
-    if (checkboxSystem_ && checkboxGPU_ && checkboxThermal_ && checkboxProcess_ && checkboxUpdate_ &&
-        checkboxNetwork_) {
-        const bool anyChecked = checkboxSystem_->isChecked() || checkboxGPU_->isChecked() ||
-                                checkboxThermal_->isChecked() || checkboxProcess_->isChecked() ||
-                                checkboxUpdate_->isChecked() || checkboxNetwork_->isChecked();
-        if (!anyChecked) {
-            categories.clear();
-        }
-    }
 
     auto events = ipc_.getEvents(fromUtc, toUtc, categories);
-
-    const QString filterText = searchEdit_ ? searchEdit_->text().trimmed() : QString();
-    if (!filterText.isEmpty()) {
-        const QString needle = filterText.toLower();
-        std::vector<kpulse::Event> filtered;
-        filtered.reserve(events.size());
-
-        for (const auto &ev : events) {
-            const QString label = ev.label;
-            QString message;
-            if (ev.details.contains(QStringLiteral("message"))) {
-                message = ev.details.value(QStringLiteral("message")).toString();
-            }
-
-            if (label.toLower().contains(needle) || message.toLower().contains(needle)) {
-                filtered.push_back(ev);
-            }
-        }
-
-        events = std::move(filtered);
-    }
-
-    model_->setEvents(events);
-    timelineView_->setEvents(events);
-
-    if (events.empty()) {
-        detailsEdit_->clear();
-    }
+    model_->setEvents(std::move(events));
 }
 
 void MainWindow::handleLiveEvent(const kpulse::Event &event)
 {
     Q_UNUSED(event);
     refreshEvents();
-}
-
-void MainWindow::handleFilterChanged()
-{
-    refreshEvents();
-}
-
-void MainWindow::handleTableSelectionChanged()
-{
-    QItemSelectionModel *selModel = tableView_->selectionModel();
-    if (!selModel) {
-        return;
-    }
-
-    const QModelIndexList rows = selModel->selectedRows();
-    if (rows.isEmpty()) {
-        return;
-    }
-
-    const int row = rows.first().row();
-    if (row < 0 || row >= model_->rowCount()) {
-        return;
-    }
-
-    showEventDetails(model_->eventAt(row));
-}
-
-void MainWindow::handleTimelineClicked(const kpulse::Event &event)
-{
-    showEventDetails(event);
-}
-
-void MainWindow::showEventDetails(const kpulse::Event &event)
-{
-    QString text;
-    text += QStringLiteral("Timestamp: %1\n").arg(event.timestamp.toString(Qt::ISODate));
-    text += QStringLiteral("Category: %1\n").arg(kpulse::categoryToString(event.category));
-    text += QStringLiteral("Severity: %1\n").arg(kpulse::severityToString(event.severity));
-    text += QStringLiteral("Label: %1\n\n").arg(event.label);
-
-    QJsonDocument doc(event.details);
-    text += QStringLiteral("Details:\n");
-    text += QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
-
-    detailsEdit_->setPlainText(text);
 }

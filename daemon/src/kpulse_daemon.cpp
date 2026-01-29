@@ -8,6 +8,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTimeZone>
+#include <QTimer>
+#include <QRandomGenerator>
 
 #include "kpulse_daemon_adaptor.h"
 
@@ -50,8 +52,35 @@ bool KPulseDaemon::init()
         return false;
     }
 
-    // You can start journald/metrics here once their APIs are stable.
-    // For now we just ensure storage is ready.
+    // ------------------------------------------------------------------
+    // TEMP: synthetic heartbeat events so the UI has something to show.
+    // This proves the DB + DBus + IpcClient + model wiring is correct.
+    // ------------------------------------------------------------------
+    auto *timer = new QTimer(this);
+    timer->setInterval(10'000); // every 10 seconds
+    connect(timer, &QTimer::timeout, this, [this]() {
+        Event ev;
+        ev.timestamp = nowUtc();
+
+        // Rotate through categories/severities just to see variety
+        static int counter = 0;
+        const int n = counter++;
+        switch (n % 4) {
+        case 0: ev.category = Category::System;   ev.severity = Severity::Info;    ev.label = QStringLiteral("System heartbeat"); break;
+        case 1: ev.category = Category::GPU;      ev.severity = Severity::Warning; ev.label = QStringLiteral("GPU micro-stutter detected"); break;
+        case 2: ev.category = Category::Thermal;  ev.severity = Severity::Warning; ev.label = QStringLiteral("Thermal spike"); break;
+        case 3: ev.category = Category::Process;  ev.severity = Severity::Error;   ev.label = QStringLiteral("Background spike"); break;
+        }
+
+        QJsonObject details;
+        details.insert(QStringLiteral("counter"), counter);
+        details.insert(QStringLiteral("source"),  QStringLiteral("synthetic"));
+        ev.details = details;
+
+        handleEventDetected(ev);
+    });
+    timer->start();
+
     return true;
 }
 

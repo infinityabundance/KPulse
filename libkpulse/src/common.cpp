@@ -1,10 +1,9 @@
-#include "kpulse/common.hpp"
+#include <QObject>
 
 namespace kpulse {
 
-QDateTime nowUtc()
+void placeholder()
 {
-    return QDateTime::currentDateTimeUtc();
 }
 
 } // namespace kpulse

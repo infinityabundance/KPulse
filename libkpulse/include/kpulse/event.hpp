@@ -31,8 +31,6 @@ struct Event {
     QString label;
     QJsonObject details;
     std::optional<qint64> windowId;
-    bool isAnomalous = false;
-    double anomalyScore = 0.0;
 };
 
 QString categoryToString(Category c);

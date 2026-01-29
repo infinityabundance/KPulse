@@ -2,12 +2,22 @@
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="org.kde.kpulse.Daemon">
+    <!-- Query events in a time range -->
     <method name="GetEvents">
       <arg name="fromMs" direction="in" type="x"/>
       <arg name="toMs" direction="in" type="x"/>
       <arg name="categories" direction="in" type="as"/>
       <arg name="eventsJson" direction="out" type="s"/>
     </method>
+
+    <!-- Phase 18: explicit test injector instead of background spam -->
+    <method name="InjectTestEvent">
+      <arg name="category" direction="in" type="s"/>
+      <arg name="severity" direction="in" type="s"/>
+      <arg name="label" direction="in" type="s"/>
+      <arg name="detailsJson" direction="in" type="s"/>
+    </method>
+
     <signal name="EventAdded">
       <arg name="eventJson" type="s"/>
     </signal>

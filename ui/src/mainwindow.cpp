@@ -4,6 +4,7 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QFile>
 #include <QFileDialog>
 #include <QGuiApplication>
@@ -16,6 +17,8 @@
 #include <QPushButton>
 #include <QTableView>
 #include <QTextStream>
+#include <QToolButton>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -32,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     vbox->setContentsMargins(4, 4, 4, 4);
     vbox->setSpacing(4);
 
-    // Top bar: time range + Refresh + Export CSV
+    // Top bar: time range + Refresh + Export CSV + About
     auto *hbox = new QHBoxLayout();
     hbox->setSpacing(4);
 
@@ -49,7 +52,17 @@ MainWindow::MainWindow(QWidget *parent)
     exportButton_ = new QPushButton(QStringLiteral("Export CSV…"), central);
     hbox->addWidget(exportButton_);
 
+    // Push following widgets to the right
     hbox->addStretch(1);
+
+    // About button on top-right linking to GitHub repo
+    aboutButton_ = new QToolButton(central);
+    aboutButton_->setIcon(QIcon::fromTheme(QStringLiteral("help-about")));
+    aboutButton_->setToolTip(QStringLiteral("About KPulse (open GitHub repo)"));
+    aboutButton_->setAutoRaise(true);
+    aboutButton_->setCursor(Qt::PointingHandCursor);
+    hbox->addWidget(aboutButton_);
+
     vbox->addLayout(hbox);
 
     // Timeline view
@@ -83,6 +96,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Timeline hover → table highlight
     connect(timelineView_, &TimelineView::eventHovered,
             this, &MainWindow::onTimelineEventHovered);
+
+    // About button → open GitHub repo
+    connect(aboutButton_, &QToolButton::clicked, this, []() {
+        QDesktopServices::openUrl(
+            QUrl(QStringLiteral("https://github.com/infinityabundance/KPulse"))
+        );
+    });
 
     // Initial connect to daemon
     ipcClient_->connectToDaemon();

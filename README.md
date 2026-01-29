@@ -1,4 +1,14 @@
 # KPulse
+<p align="center">
+  <a href="https://github.com/infinityabundance/KPulse">
+    <img
+      src="assets/kpulse.png"
+      alt="KPulse logo"
+      width="800"
+    />
+  </a>
+</p>
+
 
 KPulse is a KDE Plasma CachyOS / Archlinux system heartbeat viewer that turns dense system logs
 and background activity into a readable, visual timeline.

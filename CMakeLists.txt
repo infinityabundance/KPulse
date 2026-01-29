@@ -15,9 +15,3 @@ add_subdirectory(libkpulse)
 add_subdirectory(daemon)
 add_subdirectory(ui)
 add_subdirectory(tray)
-
-include(GNUInstallDirs)
-
-install(TARGETS kpulse-daemon kpulse-ui kpulse-tray
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)

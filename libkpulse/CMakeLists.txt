@@ -1,5 +1,17 @@
+# Library for shared KPulse logic: events, DB, IPC, helpers
+
+# Generate DBus client interface from daemon XML
+qt6_add_dbus_interface(KPULSE_DBUS_INTERFACE_SRCS
+    ${CMAKE_SOURCE_DIR}/daemon/src/dbus_interface.xml
+    kpulse_dbus_interface
+)
+
 add_library(kpulse SHARED
     src/common.cpp
+    src/event.cpp
+    src/db.cpp
+    src/ipc_client.cpp
+    ${KPULSE_DBUS_INTERFACE_SRCS}
 )
 
 target_include_directories(kpulse

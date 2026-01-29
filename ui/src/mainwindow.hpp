@@ -1,6 +1,6 @@
 #pragma once
 
-// Phase 19.1: Main window with context menu + CSV export.
+// Main window with context menu, CSV export, and live updates.
 
 #include <QMainWindow>
 #include <QDateTime>
@@ -28,6 +28,9 @@ private slots:
     void copyEventText();
     void copyEventJson();
     void exportCsv();
+
+    // Live update from daemon
+    void onEventReceived(const kpulse::Event &ev);
 
 private:
     void updateTimeRange(QDateTime &from, QDateTime &to) const;

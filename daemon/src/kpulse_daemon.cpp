@@ -2,7 +2,14 @@
 
 #include "kpulse/common.hpp"
 
-#include <QtGlobal>
+#include <QDBusConnection>
+#include <QDebug>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTimeZone>
+
+#include "kpulse_daemon_adaptor.h"
 
 namespace kpulse {
 
@@ -13,31 +20,68 @@ KPulseDaemon::KPulseDaemon(const QString &dbPath, QObject *parent)
     , journald_(this)
     , metrics_(this)
 {
-    connect(&journald_, &JournaldReader::eventDetected, this, &KPulseDaemon::handleEventDetected);
-    connect(&metrics_, &MetricsCollector::eventDetected, this, &KPulseDaemon::handleEventDetected);
+    // Wire daemon to sources of events
+    connect(&journald_, &JournaldReader::eventDetected,
+            this, &KPulseDaemon::handleEventDetected);
+    connect(&metrics_, &MetricsCollector::eventDetected,
+            this, &KPulseDaemon::handleEventDetected);
+
+    // Set up DBus adaptor and object registration.
+    auto *adaptor = new DaemonAdaptor(this);
+    Q_UNUSED(adaptor);
+
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!bus.registerObject(QStringLiteral("/org/kde/kpulse/Daemon"), this)) {
+        qWarning() << "KPulseDaemon: failed to register DBus object";
+    }
+    if (!bus.registerService(QStringLiteral("org.kde.kpulse.Daemon"))) {
+        qWarning() << "KPulseDaemon: failed to register DBus service";
+    }
 }
 
 bool KPulseDaemon::init()
 {
     if (!store_.open()) {
-        qWarning() << "Failed to open KPulse database";
+        qWarning() << "KPulseDaemon: failed to open event store at" << dbPath_;
         return false;
     }
-
     if (!store_.initSchema()) {
-        qWarning() << "Failed to initialize KPulse database schema";
+        qWarning() << "KPulseDaemon: failed to initialise schema";
         return false;
     }
 
-    if (!journald_.init()) {
-        qWarning() << "Failed to initialize journald reader";
-        return false;
-    }
-
-    journald_.start();
-    metrics_.start();
-
+    // You can start journald/metrics here once their APIs are stable.
+    // For now we just ensure storage is ready.
     return true;
+}
+
+QString KPulseDaemon::GetEvents(qlonglong fromMs,
+                                qlonglong toMs,
+                                const QStringList &categories)
+{
+    // Convert from/to to UTC QDateTime
+    QDateTime from = QDateTime::fromMSecsSinceEpoch(fromMs, QTimeZone::utc());
+    QDateTime to   = QDateTime::fromMSecsSinceEpoch(toMs,   QTimeZone::utc());
+
+    // Map category names (strings) to enum Category
+    std::vector<Category> cats;
+    cats.reserve(categories.size());
+    for (const QString &name : categories) {
+        cats.push_back(categoryFromString(name));
+    }
+
+    // Query the event store
+    const auto events = store_.queryEvents(from, to, cats);
+
+    // Serialize events as a JSON array
+    QJsonArray arr;
+    arr.reserve(static_cast<int>(events.size()));
+    for (const auto &ev : events) {
+        arr.push_back(eventToJson(ev));
+    }
+
+    QJsonDocument doc(arr);
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
 }
 
 void KPulseDaemon::handleEventDetected(const kpulse::Event &event)
@@ -49,9 +93,17 @@ void KPulseDaemon::handleEventDetected(const kpulse::Event &event)
 
     qint64 id = 0;
     if (!store_.insertEvent(eventCopy, &id)) {
-        qWarning() << "Failed to store KPulse event";
+        qWarning() << "KPulseDaemon: failed to store event";
         return;
     }
+
+    // Emit DBus-visible signal with the stored event JSON.
+    QJsonObject obj = eventToJson(eventCopy);
+    QJsonDocument doc(obj);
+    const QString json = QString::fromUtf8(
+        doc.toJson(QJsonDocument::Compact)
+    );
+    emit EventAdded(json);
 }
 
 } // namespace kpulse

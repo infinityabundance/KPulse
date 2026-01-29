@@ -33,6 +33,9 @@ private slots:
     // Live update from daemon
     void onEventReceived(const kpulse::Event &ev);
 
+    // Hover from timeline
+    void onTimelineEventHovered(int index);
+
 private:
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
     void loadEvents();

@@ -1,7 +1,5 @@
 add_library(kpulse SHARED
     src/common.cpp
-    src/event.cpp
-    src/db.cpp
 )
 
 target_include_directories(kpulse

@@ -121,7 +121,7 @@ Severity JournaldReader::severityFromPriority(int prio)
     return Severity::Info;
 }
 
-// Phase 21: classifier with special-cases + gating
+// Classifier with special-cases + gating
 bool JournaldReader::classifyMessage(const QString &message,
                                      Category &outCategory,
                                      Severity &outSeverity,
@@ -240,6 +240,12 @@ void JournaldReader::processLine(const QByteArray &line)
     // UNIT / IDENTIFIER
     const QString unit = obj.value(QStringLiteral("_SYSTEMD_UNIT")).toString();
     const QString ident = obj.value(QStringLiteral("SYSLOG_IDENTIFIER")).toString();
+
+    // 🔇 Filter: kioworker AppImage thumbnail spam
+    if (ident == QStringLiteral("kioworker") &&
+        message.contains(QStringLiteral("thumbcreator/appimagethumbnail.so"))) {
+        return; // ignore completely
+    }
 
     Category cat = Category::System;
     Severity sev = severityFromPriority(prio);

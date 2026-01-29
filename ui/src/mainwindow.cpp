@@ -80,6 +80,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(exportButton_, &QPushButton::clicked,
             this, &MainWindow::exportCsv);
 
+    // Timeline hover → table highlight
+    connect(timelineView_, &TimelineView::eventHovered,
+            this, &MainWindow::onTimelineEventHovered);
+
     // Initial connect to daemon
     ipcClient_->connectToDaemon();
 
@@ -157,6 +161,25 @@ void MainWindow::onEventReceived(const kpulse::Event &ev)
 
     model_->appendEvent(ev);
     timelineView_->appendEvent(ev);
+}
+
+// ---------- Timeline hover → table selection ----------
+
+void MainWindow::onTimelineEventHovered(int index)
+{
+    QItemSelectionModel *sel = tableView_->selectionModel();
+    if (!sel)
+        return;
+
+    if (index < 0 || index >= model_->rowCount()) {
+        sel->clearSelection();
+        return;
+    }
+
+    const QModelIndex rowIndex = model_->index(index, 0);
+    sel->setCurrentIndex(rowIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    tableView_->scrollTo(rowIndex, QAbstractItemView::PositionAtCenter);
+    contextRow_ = index;
 }
 
 // ---------- Context menu + copy/export ----------

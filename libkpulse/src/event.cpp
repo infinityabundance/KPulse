@@ -90,8 +90,6 @@ QJsonObject eventToJson(const Event &ev)
     obj.insert(QStringLiteral("severity"), severityToString(ev.severity));
     obj.insert(QStringLiteral("label"), ev.label);
     obj.insert(QStringLiteral("details"), ev.details);
-    obj.insert(QStringLiteral("anomalous"), ev.isAnomalous);
-    obj.insert(QStringLiteral("anomalyScore"), ev.anomalyScore);
     if (ev.windowId.has_value()) {
         obj.insert(QStringLiteral("window_id"), static_cast<qint64>(ev.windowId.value()));
     }
@@ -115,15 +113,6 @@ Event eventFromJson(const QJsonObject &obj)
     const QJsonValue detailsValue = obj.value(QStringLiteral("details"));
     if (detailsValue.isObject()) {
         ev.details = detailsValue.toObject();
-    }
-
-    const QJsonValue anomalousValue = obj.value(QStringLiteral("anomalous"));
-    if (anomalousValue.isBool()) {
-        ev.isAnomalous = anomalousValue.toBool();
-    }
-    const QJsonValue scoreValue = obj.value(QStringLiteral("anomalyScore"));
-    if (scoreValue.isDouble()) {
-        ev.anomalyScore = scoreValue.toDouble();
     }
 
     const QJsonValue windowValue = obj.value(QStringLiteral("window_id"));

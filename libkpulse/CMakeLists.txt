@@ -1,5 +1,8 @@
 # libkpulse: shared library for KPulse core types, DB, and IPC
 
+# Make absolutely sure automoc is on for this target
+set(CMAKE_AUTOMOC ON)
+
 # Generate DBus client interface from the daemon's XML description.
 # This will create kpulse_dbus_interface.cpp / kpulse_dbus_interface.h
 # in the binary directory for this target.
@@ -13,11 +16,12 @@ add_library(kpulse SHARED
     src/event.cpp
     src/db.cpp
     src/ipc_client.cpp
+    include/kpulse/ipc_client.hpp
     ${KPULSE_DBUS_INTERFACE_SRCS}
 )
 
 # Public headers live in include/, generated DBus headers live in the
-# build directory for this target.
+# build directory for this target (for kpulse_dbus_interface.h and moc_*).
 target_include_directories(kpulse
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include

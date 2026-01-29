@@ -75,7 +75,6 @@ QString KPulseDaemon::GetEvents(qlonglong fromMs,
 
     // Serialize events as a JSON array
     QJsonArray arr;
-    arr.reserve(static_cast<int>(events.size()));
     for (const auto &ev : events) {
         arr.push_back(eventToJson(ev));
     }

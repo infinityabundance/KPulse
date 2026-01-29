@@ -52,6 +52,10 @@ MainWindow::MainWindow(QWidget *parent)
     hbox->addStretch(1);
     vbox->addLayout(hbox);
 
+    // Timeline view
+    timelineView_ = new TimelineView(central);
+    vbox->addWidget(timelineView_, 0);
+
     // Table view
     tableView_ = new QTableView(central);
     tableView_->setModel(model_);
@@ -59,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     tableView_->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView_->setSelectionMode(QAbstractItemView::SingleSelection);
     tableView_->setContextMenuPolicy(Qt::CustomContextMenu);
-    vbox->addWidget(tableView_);
+    vbox->addWidget(tableView_, 1);
 
     setCentralWidget(central);
     setWindowTitle(QStringLiteral("KPulse"));
@@ -79,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Initial connect to daemon
     ipcClient_->connectToDaemon();
 
-    // Live updates: when daemon broadcasts EventAdded → append to model
+    // Live updates: when daemon broadcasts EventAdded → append to model/timeline
     connect(ipcClient_, &kpulse::IpcClient::eventReceived,
             this, &MainWindow::onEventReceived);
 
@@ -125,6 +129,9 @@ void MainWindow::loadEvents()
     std::vector<kpulse::Category> cats; // empty = all categories
     const auto events = ipcClient_->getEvents(from, to, cats);
     model_->setEvents(events);
+
+    // Feed timeline with the same events
+    timelineView_->setEvents(model_->events());
 }
 
 void MainWindow::onRefreshClicked()
@@ -149,6 +156,7 @@ void MainWindow::onEventReceived(const kpulse::Event &ev)
         return;
 
     model_->appendEvent(ev);
+    timelineView_->appendEvent(ev);
 }
 
 // ---------- Context menu + copy/export ----------

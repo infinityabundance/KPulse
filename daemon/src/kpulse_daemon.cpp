@@ -50,8 +50,13 @@ bool KPulseDaemon::init()
         return false;
     }
 
-    // Phase 18: no more synthetic QTimer heartbeat here.
-    // Daemon only records real events (or explicit InjectTestEvent calls).
+    // Phase 19: start journald tailing so real system events feed into KPulse.
+    if (!journald_.start()) {
+        qWarning() << "KPulseDaemon: journald reader failed to start";
+        // Not fatal: KPulse still works via InjectTestEvent/other sources.
+    }
+
+    // MetricsCollector can be wired up later.
     return true;
 }
 

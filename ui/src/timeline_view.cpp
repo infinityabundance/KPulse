@@ -18,13 +18,6 @@ void TimelineView::setEvents(const std::vector<kpulse::Event> &events)
     update();
 }
 
-void TimelineView::appendEvent(const kpulse::Event &event)
-{
-    events_.push_back(event);
-    updateTimeBounds();
-    update();
-}
-
 void TimelineView::updateTimeBounds()
 {
     if (events_.empty()) {
@@ -126,6 +119,7 @@ void TimelineView::paintEvent(QPaintEvent *event)
 
     const qreal margin = 8.0;
     QRectF inner = r.adjusted(margin, margin, -margin, -margin);
+    const qreal radius = 4.0;
     const qreal timeSpan = static_cast<qreal>(maxTimestampMs_ - minTimestampMs_);
 
     for (const auto &ev : events_) {
@@ -136,16 +130,8 @@ void TimelineView::paintEvent(QPaintEvent *event)
         const qreal x = inner.left() + tNorm * inner.width();
         const qreal y = lane.center().y();
 
-        const qreal radius = ev.isAnomalous ? 7.0 : 4.0;
-        if (ev.isAnomalous) {
-            QColor band = colorForEvent(ev);
-            band.setAlpha(30);
-            p.fillRect(QRectF(x - 5.0, inner.top(), 10.0, inner.height()), band);
-            p.setPen(QPen(Qt::black, 1.5));
-        } else {
-            p.setPen(Qt::NoPen);
-        }
         p.setBrush(colorForEvent(ev));
+        p.setPen(Qt::NoPen);
         p.drawEllipse(QPointF(x, y), radius, radius);
     }
 }

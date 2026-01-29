@@ -18,11 +18,7 @@ public:
                         int role = Qt::DisplayRole) const override;
 
     void setEvents(std::vector<kpulse::Event> events);
-    void appendEvent(const kpulse::Event &event);
     const kpulse::Event &eventAt(int row) const;
-    bool exportToJson(const QString &filePath) const;
-    bool exportToCsv(const QString &filePath) const;
-    const std::vector<kpulse::Event> &allEvents() const;
 
 private:
     std::vector<kpulse::Event> events_;

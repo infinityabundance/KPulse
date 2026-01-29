@@ -18,13 +18,6 @@ void TimelineView::setEvents(const std::vector<kpulse::Event> &events)
     update();
 }
 
-void TimelineView::appendEvent(const kpulse::Event &event)
-{
-    events_.push_back(event);
-    updateTimeBounds();
-    update();
-}
-
 void TimelineView::updateTimeBounds()
 {
     if (events_.empty()) {

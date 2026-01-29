@@ -18,7 +18,6 @@ public:
                         int role = Qt::DisplayRole) const override;
 
     void setEvents(std::vector<kpulse::Event> events);
-    void appendEvent(const kpulse::Event &event);
     const kpulse::Event &eventAt(int row) const;
 
 private:

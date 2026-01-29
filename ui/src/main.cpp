@@ -1,13 +1,12 @@
 #include <QApplication>
-#include <QMainWindow>
+#include "mainwindow.hpp"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    app.setApplicationName(QStringLiteral("KPulse"));
 
-    QMainWindow window;
-    window.setWindowTitle("KPulse");
-    window.resize(800, 600);
+    MainWindow window;
     window.show();
 
     return app.exec();

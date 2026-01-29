@@ -128,6 +128,16 @@ bool JournaldReader::classifyMessage(const QString &message,
 {
     const QString lower = message.toLower();
 
+    // HTTP 429 / rate limiting (Phase 20 special case)
+    if (lower.contains("httperror") &&
+        (lower.contains("429 client error") ||
+         lower.contains("too many requests"))) {
+        outCategory = Category::Network;
+        outSeverity = Severity::Warning;
+        outLabel = QStringLiteral("HTTP 429 (rate limited)");
+        return true;
+    }
+
     // GPU hangs / resets / timeouts
     if ((lower.contains("gpu") || lower.contains("amdgpu") || lower.contains("nvidia")) &&
         (lower.contains("hang") || lower.contains("reset") ||
@@ -168,6 +178,7 @@ bool JournaldReader::classifyMessage(const QString &message,
 
     return false;
 }
+
 
 void JournaldReader::processLine(const QByteArray &line)
 {

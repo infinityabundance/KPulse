@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QTimeZone>
 
 #include "kpulse/common.hpp"
@@ -27,8 +28,7 @@ bool JournaldReader::start()
 
     process_ = new QProcess(this);
 
-    // We use journalctl -f -o json to follow the journal as JSON lines.
-    // No sudo: we read whatever the current user can see (user + some system).
+    // journalctl -f -o json : follow journal as JSON lines
     QStringList args;
     args << QStringLiteral("-f")
          << QStringLiteral("-o") << QStringLiteral("json");
@@ -121,6 +121,7 @@ Severity JournaldReader::severityFromPriority(int prio)
     return Severity::Info;
 }
 
+// Phase 21: classifier with special-cases + gating
 bool JournaldReader::classifyMessage(const QString &message,
                                      Category &outCategory,
                                      Severity &outSeverity,
@@ -128,7 +129,7 @@ bool JournaldReader::classifyMessage(const QString &message,
 {
     const QString lower = message.toLower();
 
-    // HTTP 429 / rate limiting (Phase 20 special case)
+    // HTTP 429 / rate limiting (from requests / services)
     if (lower.contains("httperror") &&
         (lower.contains("429 client error") ||
          lower.contains("too many requests"))) {
@@ -176,9 +177,41 @@ bool JournaldReader::classifyMessage(const QString &message,
         return true;
     }
 
+    // systemd resource accounting:
+    // "Consumed 1.690s CPU time over 8.269s wall clock time, 274.1M memory peak."
+    if (lower.contains("consumed") &&
+        lower.contains("cpu time over") &&
+        lower.contains("memory peak")) {
+
+        static QRegularExpression re(
+            R"(Consumed\s+([0-9\.]+)s CPU time over\s+([0-9\.]+)s wall clock time,\s+([0-9\.]+)M memory peak\.)",
+            QRegularExpression::CaseInsensitiveOption
+        );
+
+        const QRegularExpressionMatch m = re.match(message);
+        if (m.hasMatch()) {
+            const double cpuSec = m.captured(1).toDouble();
+            const double wallSec = m.captured(2).toDouble();
+            const double memMB  = m.captured(3).toDouble();
+
+            // Thresholds: only surface if meaningfully heavy
+            const double CPU_THRESHOLD  = 5.0;    // seconds
+            const double MEM_THRESHOLD  = 1024.0; // ~1 GiB
+
+            if (cpuSec >= CPU_THRESHOLD || memMB >= MEM_THRESHOLD) {
+                outCategory = Category::Process;
+                outSeverity = Severity::Warning;
+                outLabel = QStringLiteral("High resource usage (systemd)");
+                return true;
+            } else {
+                // Below threshold: treat as noise, do NOT classify
+                return false;
+            }
+        }
+    }
+
     return false;
 }
-
 
 void JournaldReader::processLine(const QByteArray &line)
 {
@@ -212,14 +245,22 @@ void JournaldReader::processLine(const QByteArray &line)
     Severity sev = severityFromPriority(prio);
     QString label;
 
-    if (!classifyMessage(message, cat, sev, label)) {
-        // Fallback: generic mapping
+    const bool matched = classifyMessage(message, cat, sev, label);
+
+    if (!matched) {
+        // Fallback: generic mapping, but with gating:
+        // we DROP generic system/info noise.
         cat = Category::System;
         label = message.left(120);
+
+        if (sev == Severity::Info && cat == Category::System) {
+            // too chatty, skip this event entirely
+            return;
+        }
     }
 
     Event ev;
-    ev.timestamp = nowUtc();  // journalctl already orders by time; approximate is fine
+    ev.timestamp = nowUtc();  // journalctl already ordered; approximate is fine
     ev.category = cat;
     ev.severity = sev;
     ev.label = label;

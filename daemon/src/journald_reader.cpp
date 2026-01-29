@@ -1,36 +1,13 @@
 #include "journald_reader.hpp"
 
 #include <QDebug>
-#include <QByteArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTimeZone>
-
-#include <systemd/sd-journal.h>
 
 #include "kpulse/common.hpp"
 
 namespace kpulse {
-
-namespace {
-
-QString readField(sd_journal *journal, const char *field)
-{
-    const void *data = nullptr;
-    size_t len = 0;
-    int r = sd_journal_get_data(journal, field, &data, &len);
-    if (r < 0 || !data || len == 0) {
-        return {};
-    }
-
-    QByteArray ba(static_cast<const char *>(data), static_cast<int>(len));
-    int idx = ba.indexOf('=');
-    if (idx < 0) {
-        return {};
-    }
-    return QString::fromUtf8(ba.constData() + idx + 1,
-                             ba.size() - idx - 1);
-}
-
-} // namespace
 
 JournaldReader::JournaldReader(QObject *parent)
     : QObject(parent)
@@ -44,55 +21,89 @@ JournaldReader::~JournaldReader()
 
 bool JournaldReader::start()
 {
-    if (journal_) {
+    if (process_) {
         return true;
     }
 
-    int r = sd_journal_open(&journal_, SD_JOURNAL_LOCAL_ONLY);
-    if (r < 0) {
-        qWarning() << "JournaldReader: failed to open journal:" << r;
-        journal_ = nullptr;
+    process_ = new QProcess(this);
+
+    // We use journalctl -f -o json to follow the journal as JSON lines.
+    // No sudo: we read whatever the current user can see (user + some system).
+    QStringList args;
+    args << QStringLiteral("-f")
+         << QStringLiteral("-o") << QStringLiteral("json");
+
+    process_->setProgram(QStringLiteral("journalctl"));
+    process_->setArguments(args);
+    process_->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(process_, &QProcess::readyReadStandardOutput,
+            this, &JournaldReader::handleReadyRead);
+    connect(process_,
+            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this,
+            &JournaldReader::handleFinished);
+
+    process_->start();
+    if (!process_->waitForStarted(3000)) {
+        qWarning() << "JournaldReader: failed to start journalctl process";
+        delete process_;
+        process_ = nullptr;
         return false;
     }
 
-    // Seek to the end so we only see new events.
-    sd_journal_seek_tail(journal_);
-    sd_journal_next(journal_);
-
-    if (!timer_) {
-        timer_ = new QTimer(this);
-        timer_->setInterval(1000); // 1s poll
-        connect(timer_, &QTimer::timeout,
-                this, &JournaldReader::poll);
-    }
-    timer_->start();
-
-    qInfo() << "JournaldReader: started tailing systemd journal";
+    qInfo() << "JournaldReader: started journalctl -f -o json";
     return true;
 }
 
 void JournaldReader::stop()
 {
-    if (timer_) {
-        timer_->stop();
+    if (!process_) {
+        return;
     }
-    if (journal_) {
-        sd_journal_close(journal_);
-        journal_ = nullptr;
-    }
+    process_->kill();
+    process_->waitForFinished(1000);
+    delete process_;
+    process_ = nullptr;
+    buffer_.clear();
 }
 
-void JournaldReader::poll()
+void JournaldReader::handleReadyRead()
 {
-    if (!journal_) {
+    if (!process_) {
         return;
     }
 
-    Event ev;
-    // Drain all pending entries each tick.
-    while (readNextEvent(ev)) {
-        emit eventDetected(ev);
+    buffer_.append(process_->readAllStandardOutput());
+
+    int index = 0;
+    while (true) {
+        int newline = buffer_.indexOf('\n', index);
+        if (newline < 0) {
+            // No complete line yet.
+            break;
+        }
+
+        QByteArray line = buffer_.mid(index, newline - index).trimmed();
+        if (!line.isEmpty()) {
+            processLine(line);
+        }
+
+        index = newline + 1;
     }
+
+    // Keep any partial line for next time.
+    if (index > 0) {
+        buffer_ = buffer_.mid(index);
+    }
+}
+
+void JournaldReader::handleFinished(int exitCode, QProcess::ExitStatus status)
+{
+    Q_UNUSED(exitCode);
+    Q_UNUSED(status);
+    qWarning() << "JournaldReader: journalctl exited; stopping reader";
+    stop();
 }
 
 Severity JournaldReader::severityFromPriority(int prio)
@@ -116,8 +127,6 @@ bool JournaldReader::classifyMessage(const QString &message,
                                      QString &outLabel)
 {
     const QString lower = message.toLower();
-
-    // Very rough heuristics, we can refine later.
 
     // GPU hangs / resets / timeouts
     if ((lower.contains("gpu") || lower.contains("amdgpu") || lower.contains("nvidia")) &&
@@ -160,43 +169,33 @@ bool JournaldReader::classifyMessage(const QString &message,
     return false;
 }
 
-bool JournaldReader::readNextEvent(Event &outEvent)
+void JournaldReader::processLine(const QByteArray &line)
 {
-    int r = sd_journal_next(journal_);
-    if (r < 0) {
-        qWarning() << "JournaldReader: sd_journal_next failed:" << r;
-        return false;
-    }
-    if (r == 0) {
-        // No more entries right now.
-        return false;
+    QJsonParseError err{};
+    QJsonDocument doc = QJsonDocument::fromJson(line, &err);
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        return;
     }
 
-    // Timestamp
-    uint64_t usec = 0;
-    r = sd_journal_get_realtime_usec(journal_, &usec);
-    if (r < 0) {
-        outEvent.timestamp = nowUtc();
-    } else {
-        const qint64 msec = static_cast<qint64>(usec / 1000);
-        outEvent.timestamp = QDateTime::fromMSecsSinceEpoch(
-            msec,
-            QTimeZone::utc()
-        );
+    const QJsonObject obj = doc.object();
+
+    // MESSAGE
+    const QString message = obj.value(QStringLiteral("MESSAGE")).toString();
+
+    // PRIORITY (string or int)
+    int prio = 5;
+    const QJsonValue prioVal = obj.value(QStringLiteral("PRIORITY"));
+    if (prioVal.isString()) {
+        bool ok = false;
+        int tmp = prioVal.toString().toInt(&ok);
+        if (ok) prio = tmp;
+    } else if (prioVal.isDouble()) {
+        prio = prioVal.toInt();
     }
 
-    // Basic fields
-    const QString message = readField(journal_, "MESSAGE");
-    const QString unit = readField(journal_, "_SYSTEMD_UNIT");
-    const QString ident = readField(journal_, "SYSLOG_IDENTIFIER");
-    const QString prioStr = readField(journal_, "PRIORITY");
-
-    int prio = 5; // default to "notice/info-ish"
-    bool ok = false;
-    int tmp = prioStr.toInt(&ok);
-    if (ok) {
-        prio = tmp;
-    }
+    // UNIT / IDENTIFIER
+    const QString unit = obj.value(QStringLiteral("_SYSTEMD_UNIT")).toString();
+    const QString ident = obj.value(QStringLiteral("SYSLOG_IDENTIFIER")).toString();
 
     Category cat = Category::System;
     Severity sev = severityFromPriority(prio);
@@ -208,9 +207,11 @@ bool JournaldReader::readNextEvent(Event &outEvent)
         label = message.left(120);
     }
 
-    outEvent.category = cat;
-    outEvent.severity = sev;
-    outEvent.label = label;
+    Event ev;
+    ev.timestamp = nowUtc();  // journalctl already orders by time; approximate is fine
+    ev.category = cat;
+    ev.severity = sev;
+    ev.label = label;
 
     QJsonObject details;
     if (!message.isEmpty())
@@ -221,9 +222,9 @@ bool JournaldReader::readNextEvent(Event &outEvent)
         details.insert(QStringLiteral("identifier"), ident);
     details.insert(QStringLiteral("priority"), prio);
 
-    outEvent.details = details;
+    ev.details = details;
 
-    return true;
+    emit eventDetected(ev);
 }
 
 } // namespace kpulse

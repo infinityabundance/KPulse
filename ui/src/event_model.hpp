@@ -1,6 +1,6 @@
 #pragma once
 
-// Phase 19.1: Event model with accessor for clipboard/CSV export.
+// Event model with clipboard/CSV helpers and append support for live updates.
 
 #include <QAbstractTableModel>
 #include <QVector>
@@ -22,6 +22,9 @@ public:
 
     // Replace the data set with new events.
     void setEvents(const std::vector<kpulse::Event> &events);
+
+    // Append a single event (for live updates).
+    void appendEvent(const kpulse::Event &ev);
 
     // Accessors used by MainWindow for clipboard/CSV export.
     kpulse::Event eventAt(int row) const;

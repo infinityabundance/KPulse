@@ -27,6 +27,7 @@
 #include <QWidget>
 #include <QTimer>
 #include <QCoreApplication>
+#include <QTimeZone>
 
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusConnectionInterface>
@@ -190,7 +191,7 @@ void MainWindow::updateTimeRange(QDateTime &from, QDateTime &to) const
         QDate d = now.date();
         from = QDateTime(QDate(d.year(), d.month(), d.day()),
                          QTime(0, 0, 0),
-                         Qt::UTC);
+                         QTimeZone::utc());
         break;
     }
     }

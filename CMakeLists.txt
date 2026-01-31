@@ -23,4 +23,4 @@ add_subdirectory(libkpulse)
 add_subdirectory(daemon)
 add_subdirectory(ui)
 add_subdirectory(tray)
-
+add_subdirectory(launcher)

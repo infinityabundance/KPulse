@@ -1,0 +1,100 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#111827"></stop>
+      <stop offset="60%" stop-color="#050b11"></stop>
+      <stop offset="100%" stop-color="#02040a"></stop>
+    </radialGradient>
+
+    <!-- Blue ring gradient -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#53cbff"></stop>
+      <stop offset="50%" stop-color="#24a3ff"></stop>
+      <stop offset="100%" stop-color="#61e4ff"></stop>
+    </linearGradient>
+
+    <!-- Radar sweep arc -->
+    <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1f7bd6" stop-opacity="0.0"></stop>
+      <stop offset="40%" stop-color="#2fa4ff" stop-opacity="0.7"></stop>
+      <stop offset="100%" stop-color="#6cf5ff" stop-opacity="0.0"></stop>
+    </linearGradient>
+
+    <!-- Pulse line gradient -->
+    <linearGradient id="pulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffe59a"></stop>
+      <stop offset="30%" stop-color="#ffc857"></stop>
+      <stop offset="70%" stop-color="#ff9f1c"></stop>
+      <stop offset="100%" stop-color="#ffb347"></stop>
+    </linearGradient>
+
+    <!-- Glow for pulse -->
+    <filter id="pulseGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0
+                0.7 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0.9 0"></feColorMatrix>
+    </filter>
+
+    <!-- Inner blue glow -->
+    <filter id="innerGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0
+                0.5 0.8 1 0 0
+                0.9 0.9 1 0 0
+                0 0 0 0.8 0"></feColorMatrix>
+    </filter>
+  </defs>
+
+  <!-- Dark rounded background -->
+  <rect x="10" y="10" width="236" height="236" rx="56" ry="56" fill="url(#bgGrad)"></rect>
+
+  <!-- Radar circle group -->
+  <g transform="translate(128 128)">
+    <!-- Outer glow -->
+    <circle r="92" fill="none" stroke="#29a4ff" stroke-width="3" filter="url(#innerGlow)"></circle>
+
+    <!-- Outer ring -->
+    <circle r="88" fill="none" stroke="url(#ringGrad)" stroke-width="6"></circle>
+
+    <!-- Inner ring -->
+    <circle r="58" fill="none" stroke="url(#ringGrad)" stroke-width="4" opacity="0.9"></circle>
+
+    <!-- Crosshair lines -->
+    <line x1="-70" y1="0" x2="70" y2="0" stroke="#1c82d8" stroke-width="2" opacity="0.5"></line>
+    <line x1="0" y1="-70" x2="0" y2="70" stroke="#1c82d8" stroke-width="2" opacity="0.5"></line>
+
+    <!-- Radar sweep arc -->
+    <path d="M -70 -10 A 80 80 0 0 1 40 -60" fill="none" stroke="url(#arcGrad)" stroke-width="8" stroke-linecap="round" opacity="0.9"></path>
+
+    <!-- Small radar dots -->
+    <circle cx="35" cy="-40" r="6" fill="#59d6ff" opacity="0.95"></circle>
+    <circle cx="-40" cy="30" r="5" fill="#2aa4ff" opacity="0.8"></circle>
+    <circle cx="55" cy="10" r="4" fill="#6fe8ff" opacity="0.7"></circle>
+  </g>
+
+  <!-- Pulse line with glow (drawn in full canvas coords for easier tweaking) -->
+  <!-- Glow stroke -->
+  <polyline points="
+      24,132
+      76,132
+      94,56
+      112,196
+      132,70
+      154,178
+      184,132
+      232,132" fill="none" stroke="#ffb347" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#pulseGlow)" opacity="0.9"></polyline>
+
+  <!-- Core bright pulse -->
+  <polyline points="
+      24,132
+      76,132
+      94,56
+      112,196
+      132,70
+      154,178
+      184,132
+      232,132" fill="none" stroke="url(#pulseGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+</svg>

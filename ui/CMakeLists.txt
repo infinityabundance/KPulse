@@ -5,6 +5,7 @@ add_executable(kpulse-ui
     src/mainwindow.cpp
     src/event_model.cpp
     src/timeline_view.cpp
+    ${CMAKE_SOURCE_DIR}/assets/kpulse.qrc
 )
 
 target_include_directories(kpulse-ui
@@ -19,4 +20,5 @@ target_link_libraries(kpulse-ui
         Qt6::Widgets
         Qt6::DBus
         Qt6::Sql
+        Qt6::Svg
 )

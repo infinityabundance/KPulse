@@ -85,14 +85,17 @@ int main(int argc, char *argv[])
 
     QObject::connect(tray, &QSystemTrayIcon::activated,
                      [=](QSystemTrayIcon::ActivationReason reason) {
-        if (reason != QSystemTrayIcon::DoubleClick) {
+        if (reason != QSystemTrayIcon::DoubleClick &&
+            reason != QSystemTrayIcon::Trigger) {
             return;
         }
         const QString uiCmd = resolveLocalBinary(
             QStringLiteral("../ui/kpulse-ui"),
             QStringLiteral("kpulse-ui")
         );
-        QProcess::startDetached(uiCmd);
+        if (!QProcess::startDetached(uiCmd)) {
+            qWarning() << "KPulse tray: failed to launch UI on activation";
+        }
     });
 
     // Periodically update daemon status

@@ -83,6 +83,18 @@ int main(int argc, char *argv[])
     tray->setContextMenu(menu);
     tray->show();
 
+    QObject::connect(tray, &QSystemTrayIcon::activated,
+                     [=](QSystemTrayIcon::ActivationReason reason) {
+        if (reason != QSystemTrayIcon::DoubleClick) {
+            return;
+        }
+        const QString uiCmd = resolveLocalBinary(
+            QStringLiteral("../ui/kpulse-ui"),
+            QStringLiteral("kpulse-ui")
+        );
+        QProcess::startDetached(uiCmd);
+    });
+
     // Periodically update daemon status
     QTimer *timer = new QTimer(tray);
     auto updateStatus = [&]() {

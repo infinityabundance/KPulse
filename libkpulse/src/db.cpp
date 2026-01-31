@@ -8,6 +8,7 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QTimeZone>
 #include <QVariant>
 #include <QDebug>
 
@@ -226,7 +227,7 @@ std::vector<Event> EventStore::queryEvents(const QDateTime &from,
         Event ev;
 
         const qint64 tsMs = query.value(1).toLongLong();
-        ev.timestamp = QDateTime::fromMSecsSinceEpoch(tsMs, Qt::UTC); // warning-only in Qt6
+        ev.timestamp = QDateTime::fromMSecsSinceEpoch(tsMs, QTimeZone::utc());
 
         ev.category = static_cast<Category>(query.value(2).toInt());
         ev.severity = static_cast<Severity>(query.value(3).toInt());

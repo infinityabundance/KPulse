@@ -49,17 +49,6 @@ void stopDaemonWithFallback()
 
 } // namespace
 
-static bool isDaemonRunning()
-{
-    QDBusInterface iface(
-        "org.kde.kpulse.Daemon",
-        "/org/kde/kpulse/Daemon",
-        "org.kde.kpulse.Daemon",
-        QDBusConnection::sessionBus()
-    );
-    return iface.isValid();
-}
-
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);

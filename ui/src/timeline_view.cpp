@@ -174,7 +174,7 @@ void TimelineView::paintEvent(QPaintEvent *event)
             {Category::Process, "Process"},
             {Category::Network, "Network"},
             {Category::System, "System"},
-            {Category::Unknown, "Other"},
+            {Category::Update, "Update"},
         };
 
         int x = legendRect.left();

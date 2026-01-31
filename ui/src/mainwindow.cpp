@@ -4,26 +4,71 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QDateTime>
-#include <QDesktopServices>
+#include <QDialog>
+#include <QDir>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
+#include <QProcess>
 #include <QPushButton>
 #include <QTableView>
 #include <QTextStream>
 #include <QToolButton>
-#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QTimer>
+#include <QCoreApplication>
+
+#include <QtDBus/QDBusConnection>
+#include <QtDBus/QDBusConnectionInterface>
 
 #include "kpulse/event.hpp"
 #include "kpulse/ipc_client.hpp"
+
+namespace {
+
+constexpr const char *kDaemonService = "org.kde.kpulse.Daemon";
+
+bool isDaemonRunning()
+{
+    QDBusConnectionInterface *iface = QDBusConnection::sessionBus().interface();
+    if (!iface) {
+        return false;
+    }
+    return iface->isServiceRegistered(QString::fromUtf8(kDaemonService));
+}
+
+QString resolveLocalBinary(const QString &relativePath, const QString &fallback)
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString candidate = QDir(appDir).filePath(relativePath);
+    return QFileInfo::exists(candidate) ? QDir::cleanPath(candidate) : fallback;
+}
+
+void stopDaemonWithFallback()
+{
+    QProcess proc;
+    proc.start(QStringLiteral("systemctl"),
+               {QStringLiteral("--user"), QStringLiteral("stop"), QStringLiteral("kpulse-daemon.service")});
+    if (proc.waitForStarted(500)) {
+        proc.waitForFinished(1500);
+    }
+
+    if (isDaemonRunning()) {
+        QProcess::startDetached(QStringLiteral("pkill"), {QStringLiteral("-x"), QStringLiteral("kpulse-daemon")});
+    }
+}
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -52,13 +97,19 @@ MainWindow::MainWindow(QWidget *parent)
     exportButton_ = new QPushButton(QStringLiteral("Export CSV…"), central);
     hbox->addWidget(exportButton_);
 
+    daemonToggleButton_ = new QPushButton(QStringLiteral("Start daemon"), central);
+    hbox->addWidget(daemonToggleButton_);
+
+    daemonStatusLabel_ = new QLabel(QStringLiteral("Daemon: checking..."), central);
+    hbox->addWidget(daemonStatusLabel_);
+
     // Push following widgets to the right
     hbox->addStretch(1);
 
     // About button on top-right linking to GitHub repo
     aboutButton_ = new QToolButton(central);
     aboutButton_->setIcon(QIcon::fromTheme(QStringLiteral("help-about")));
-    aboutButton_->setToolTip(QStringLiteral("About KPulse (open GitHub repo)"));
+    aboutButton_->setToolTip(QStringLiteral("About KPulse"));
     aboutButton_->setAutoRaise(true);
     aboutButton_->setCursor(Qt::PointingHandCursor);
     hbox->addWidget(aboutButton_);
@@ -93,16 +144,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(exportButton_, &QPushButton::clicked,
             this, &MainWindow::exportCsv);
 
+    connect(daemonToggleButton_, &QPushButton::clicked,
+            this, &MainWindow::onDaemonToggleClicked);
+
     // Timeline hover → table highlight
     connect(timelineView_, &TimelineView::eventHovered,
             this, &MainWindow::onTimelineEventHovered);
 
-    // About button → open GitHub repo
-    connect(aboutButton_, &QToolButton::clicked, this, []() {
-        QDesktopServices::openUrl(
-            QUrl(QStringLiteral("https://github.com/infinityabundance/KPulse"))
-        );
-    });
+    connect(aboutButton_, &QToolButton::clicked, this, &MainWindow::showAboutDialog);
 
     // Initial connect to daemon
     ipcClient_->connectToDaemon();
@@ -113,6 +162,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Initial load
     onRefreshClicked();
+
+    // Poll daemon status for UI updates.
+    auto *statusTimer = new QTimer(this);
+    connect(statusTimer, &QTimer::timeout, this, &MainWindow::refreshDaemonStatus);
+    statusTimer->start(2000);
+    refreshDaemonStatus();
 }
 
 void MainWindow::updateTimeRange(QDateTime &from, QDateTime &to) const
@@ -166,6 +221,77 @@ void MainWindow::onRefreshClicked()
 void MainWindow::onTimeRangeChanged(int)
 {
     loadEvents();
+}
+
+void MainWindow::onDaemonToggleClicked()
+{
+    if (isDaemonRunning()) {
+        stopDaemonWithFallback();
+    } else {
+        const QString daemonCmd = resolveLocalBinary(
+            QStringLiteral("../daemon/kpulse-daemon"),
+            QStringLiteral("kpulse-daemon")
+        );
+        if (!QProcess::startDetached(daemonCmd)) {
+            QMessageBox::warning(this,
+                                 QStringLiteral("KPulse"),
+                                 QStringLiteral("Failed to start kpulse-daemon."));
+        }
+    }
+
+    refreshDaemonStatus();
+}
+
+void MainWindow::refreshDaemonStatus()
+{
+    const bool running = isDaemonRunning();
+    daemonStatusLabel_->setText(running
+        ? QStringLiteral("Daemon: running")
+        : QStringLiteral("Daemon: stopped"));
+    daemonToggleButton_->setText(running
+        ? QStringLiteral("Stop daemon")
+        : QStringLiteral("Start daemon"));
+}
+
+void MainWindow::showAboutDialog()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(QStringLiteral("About KPulse"));
+    dialog.setWindowIcon(QIcon(QStringLiteral(":/icons/kpulse.svg")));
+
+    auto *layout = new QVBoxLayout(&dialog);
+
+    auto *row = new QHBoxLayout();
+    auto *icon = new QLabel(&dialog);
+    icon->setPixmap(QIcon(QStringLiteral(":/icons/kpulse.svg")).pixmap(64, 64));
+    row->addWidget(icon);
+
+    auto *textCol = new QVBoxLayout();
+    auto *title = new QLabel(QStringLiteral("<b>KPulse</b>"), &dialog);
+    auto *version = new QLabel(
+        QStringLiteral("Version %1").arg(QCoreApplication::applicationVersion()),
+        &dialog
+    );
+    auto *repoLink = new QLabel(
+        QStringLiteral("<a href=\"https://github.com/infinityabundance/KPulse\">https://github.com/infinityabundance/KPulse</a>"),
+        &dialog
+    );
+    repoLink->setTextFormat(Qt::RichText);
+    repoLink->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    repoLink->setOpenExternalLinks(true);
+
+    textCol->addWidget(title);
+    textCol->addWidget(version);
+    textCol->addWidget(repoLink);
+    row->addLayout(textCol);
+
+    layout->addLayout(row);
+
+    auto *closeButton = new QPushButton(QStringLiteral("Close"), &dialog);
+    connect(closeButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    layout->addWidget(closeButton);
+
+    dialog.exec();
 }
 
 // ---------- Live updates ----------

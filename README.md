@@ -167,7 +167,7 @@ KPulse intentionally sits *above* raw logging — closer to a **system health in
 ### Dependencies
 
 Required:
-- Qt 6 (Widgets, DBus)
+- Qt 6 (Widgets, DBus, Svg)
 - CMake ≥ 3.20
 - SQLite3
 - systemd (journald access)
@@ -177,7 +177,7 @@ Optional:
 
 ```bash
 sudo pacman -S cmake ninja base-devel \
-    qt6-base qt6-tools qt6-declarative \
+    qt6-base qt6-tools qt6-declarative qt6-svg \
     kcoreaddons kstatusnotifieritem \
     systemd-libs sqlite systemd extra-cmake-modules kcoreaddons kio
 ```

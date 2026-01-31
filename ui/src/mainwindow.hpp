@@ -5,6 +5,7 @@
 #include <QToolButton>
 
 class QComboBox;
+class QLabel;
 class QPushButton;
 class QTableView;
 
@@ -13,7 +14,7 @@ class QTableView;
 #include "timeline_view.hpp"
 
 // Main window with timeline, table, context menu, CSV export,
-// live updates, and an "About" button linking to the GitHub repo.
+// live updates, and an About dialog.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -36,6 +37,9 @@ private slots:
 
     // Hover from timeline
     void onTimelineEventHovered(int index);
+    void onDaemonToggleClicked();
+    void refreshDaemonStatus();
+    void showAboutDialog();
 
 private:
     void updateTimeRange(QDateTime &from, QDateTime &to) const;
@@ -47,6 +51,8 @@ private:
     QComboBox *rangeCombo_ = nullptr;
     QPushButton *refreshButton_ = nullptr;
     QPushButton *exportButton_ = nullptr;
+    QPushButton *daemonToggleButton_ = nullptr;
+    QLabel *daemonStatusLabel_ = nullptr;
     QToolButton *aboutButton_ = nullptr;
     QTableView *tableView_ = nullptr;
     TimelineView *timelineView_ = nullptr;

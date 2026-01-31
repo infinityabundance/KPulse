@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # ---- Qt6 (required) ------------------------------------------------------
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql DBus Svg)
 
 # ---- KDE Frameworks 6 (optional, only for tray) -------------------------
 find_package(KF6 QUIET COMPONENTS StatusNotifierItem CoreAddons)

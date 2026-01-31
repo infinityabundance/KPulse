@@ -199,28 +199,7 @@ Start everything (daemon + tray + UI) with one command:
 ./build/launcher/kpulse
 ```
 
-Or start pieces manually:
-
-Start the daemon:
-```
-./build/daemon/kpulse-daemon
-```
-
-Start the UI:
-```
-./build/ui/kpulse-ui
-```
-
-Start the tray app:
-```
-./build/tray/kpulse-tray
-```
-
 ### 💡 Usage
-
-Start `kpulse-daemon`
-
-Open KPulse via the UI or tray
 
 Select a time range
 

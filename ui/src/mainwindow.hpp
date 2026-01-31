@@ -38,6 +38,7 @@ private slots:
     // Hover from timeline
     void onTimelineEventHovered(int index);
     void onDaemonToggleClicked();
+    void onStartTrayClicked();
     void refreshDaemonStatus();
     void showAboutDialog();
 
@@ -52,6 +53,7 @@ private:
     QPushButton *refreshButton_ = nullptr;
     QPushButton *exportButton_ = nullptr;
     QPushButton *daemonToggleButton_ = nullptr;
+    QPushButton *startTrayButton_ = nullptr;
     QLabel *daemonStatusLabel_ = nullptr;
     QToolButton *aboutButton_ = nullptr;
     QTableView *tableView_ = nullptr;

@@ -101,6 +101,9 @@ MainWindow::MainWindow(QWidget *parent)
     daemonToggleButton_ = new QPushButton(QStringLiteral("Start daemon"), central);
     hbox->addWidget(daemonToggleButton_);
 
+    startTrayButton_ = new QPushButton(QStringLiteral("Start tray"), central);
+    hbox->addWidget(startTrayButton_);
+
     daemonStatusLabel_ = new QLabel(QStringLiteral("Daemon: checking..."), central);
     hbox->addWidget(daemonStatusLabel_);
 
@@ -147,6 +150,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(daemonToggleButton_, &QPushButton::clicked,
             this, &MainWindow::onDaemonToggleClicked);
+    connect(startTrayButton_, &QPushButton::clicked,
+            this, &MainWindow::onStartTrayClicked);
 
     // Timeline hover → table highlight
     connect(timelineView_, &TimelineView::eventHovered,
@@ -241,6 +246,19 @@ void MainWindow::onDaemonToggleClicked()
     }
 
     refreshDaemonStatus();
+}
+
+void MainWindow::onStartTrayClicked()
+{
+    const QString trayCmd = resolveLocalBinary(
+        QStringLiteral("../tray/kpulse-tray"),
+        QStringLiteral("kpulse-tray")
+    );
+    if (!QProcess::startDetached(trayCmd)) {
+        QMessageBox::warning(this,
+                             QStringLiteral("KPulse"),
+                             QStringLiteral("Failed to start kpulse-tray."));
+    }
 }
 
 void MainWindow::refreshDaemonStatus()

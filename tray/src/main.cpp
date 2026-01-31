@@ -7,6 +7,12 @@
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusInterface>
 
+namespace {
+
+constexpr const char *kTrayService = "org.kde.kpulse.Tray";
+
+} // namespace
+
 static bool isDaemonRunning()
 {
     QDBusInterface iface(
@@ -22,6 +28,11 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
+
+    // Prevent multiple tray instances.
+    if (!QDBusConnection::sessionBus().registerService(QString::fromUtf8(kTrayService))) {
+        return 0;
+    }
 
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         return 0;

@@ -194,6 +194,13 @@ cmake --build build
 
 ### ▶️ Run
 
+Start everything (daemon + tray + UI) with one command:
+```
+./build/launcher/kpulse
+```
+
+Or start pieces manually:
+
 Start the daemon:
 ```
 ./build/daemon/kpulse-daemon

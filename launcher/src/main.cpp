@@ -5,6 +5,8 @@
 #include <QProcess>
 #include <QThread>
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 
 namespace {
 
@@ -38,20 +40,34 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
 
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString daemonPath = QDir(appDir).filePath("../daemon/kpulse-daemon");
+    const QString trayPath = QDir(appDir).filePath("../tray/kpulse-tray");
+    const QString uiPath = QDir(appDir).filePath("../ui/kpulse-ui");
+
     if (!isServiceRegistered(kDaemonService)) {
-        if (!QProcess::startDetached(QStringLiteral("kpulse-daemon"))) {
+        const QString daemonCmd = QFileInfo::exists(daemonPath)
+            ? QDir::cleanPath(daemonPath)
+            : QStringLiteral("kpulse-daemon");
+        if (!QProcess::startDetached(daemonCmd)) {
             qWarning() << "KPulse launcher: failed to start kpulse-daemon";
         }
         waitForService(kDaemonService, 2000);
     }
 
     if (!isServiceRegistered(kTrayService)) {
-        if (!QProcess::startDetached(QStringLiteral("kpulse-tray"))) {
+        const QString trayCmd = QFileInfo::exists(trayPath)
+            ? QDir::cleanPath(trayPath)
+            : QStringLiteral("kpulse-tray");
+        if (!QProcess::startDetached(trayCmd)) {
             qWarning() << "KPulse launcher: failed to start kpulse-tray";
         }
     }
 
-    if (!QProcess::startDetached(QStringLiteral("kpulse-ui"))) {
+    const QString uiCmd = QFileInfo::exists(uiPath)
+        ? QDir::cleanPath(uiPath)
+        : QStringLiteral("kpulse-ui");
+    if (!QProcess::startDetached(uiCmd)) {
         qWarning() << "KPulse launcher: failed to start kpulse-ui";
         return 1;
     }

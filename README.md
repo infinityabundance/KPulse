@@ -24,6 +24,9 @@
   <img src="https://img.shields.io/badge/build-CMake-success" alt="Build system: CMake">
 </p>
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/infinityabundance/KPulse)
+
+
 KPulse is a KDE Plasma CachyOS / Archlinux system heartbeat viewer that turns dense system logs
 and background activity into a readable, visual timeline.
 
